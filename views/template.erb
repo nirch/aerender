@@ -1,0 +1,25 @@
+<h1>
+	<%= @template["name"] %>
+</h1>
+
+<p>
+	<%= @template["description"] %>
+</p>
+
+<% for segment in @template["segments"] do %>
+	<% if segment["type"] == "Video" then %>
+		<form action="/upload" method="post" enctype="multipart/form-data">
+			<%= segment["name"] %>: <input type="file" accept="video/*" name="file">
+			<input type="submit" value="Upload">
+			<input type="hidden" name="template_folder" value=<%= @template["after_effects"]["folder"] %>>
+			<input type="hidden" name="segment_file" value=<%= segment["file"] %>>
+		</form>
+	<% end %>
+<% end %>
+
+<form action="/render" method="post">
+	Enter output filename: <input type="text" name="output">
+	<input type="submit" value="Generate">
+	<input type="hidden" name="template_folder" value=<%= @template["after_effects"]["folder"] %>>
+	<input type="hidden" name="template_project" value=<%= @template["after_effects"]["project"] %>>
+</form>
