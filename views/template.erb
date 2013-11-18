@@ -14,6 +14,13 @@
 			<input type="hidden" name="template_folder" value=<%= @template["after_effects"]["folder"] %>>
 			<input type="hidden" name="segment_file" value=<%= segment["file"] %>>
 		</form>
+	<% elsif segment["type"] == "Text" then %>
+		<form action="/update_text" method="post">
+			<%= segment["name"] %>: <input type="text" name="dynamic_text">
+			<input type="submit" value="Submit">
+			<input type="hidden" name="template_folder" value=<%= @template["after_effects"]["folder"] %>>
+			<input type="hidden" name="dynamic_text_file" value=<%= segment["file"] %>>
+		</form>		
 	<% end %>
 <% end %>
 

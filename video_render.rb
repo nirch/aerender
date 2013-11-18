@@ -49,15 +49,31 @@ post '/upload' do
 	redirect back
 end
 
+post '/update_text' do
+	dynamic_text_path = settings.aeProjectsFolder + params[:template_folder] + "/" + params[:dynamic_text_file]
+	dynamic_text = params[:dynamic_text]
+	file_contents = "var Text = ['#{dynamic_text}'];"
+
+	dynamic_text_file = File.new(dynamic_text_path, "w")
+    dynamic_text_file.puts(file_contents)
+    dynamic_text_file.close
+
+    redirect back
+end
+
 post '/render' do
+
 	projectPath = settings.aeProjectsFolder + params[:template_folder] + "/" + params[:template_project]
 	outputPath = settings.outputFolder +  params[:output] + ".mp4"
 	aerenderCommandLine = '"' + settings.aerenderPath + '"' + ' -project "' + projectPath + '"' + ' -rqindex 1 -output "' + outputPath + '"'
 	puts "areder command line: #{aerenderCommandLine}"
 
-	response = system(aerenderCommandLine)
+	Thread.new{
+		system(aerenderCommandLine)
+	}
 
-	redirect "/download/" + params[:output] + ".mp4"
+	redirect_to = "/download/" + params[:output] + ".mp4"
+	erb "Wait a minute, and click this link: <a href=" + redirect_to + ">" +  params[:output] + "</a>"
 end
 
 get '/download/:filename' do
