@@ -115,7 +115,7 @@ post '/foreground' do
 	FileUtils.mkdir images_fodler
 	ffmpeg_command = ffmpeg_path + ' -i "' + destination + '" "' + images_fodler + 'Image-%4d.jpg"'
 	puts ffmpeg_command
-	system(ffmpeg_command)
+	#system(ffmpeg_command)
 
 	# Running the foreground extraction algorithm
 	algo_path = "C:/Development/Algo/v-13-12-01/UniformMattingCA.exe"
@@ -124,7 +124,30 @@ post '/foreground' do
 	output_path = destination_folder + "Foreground-" + folder + ".avi"
 	algo_command = algo_path + ' "' + mask_path + '" "' + first_image_path + '" "' + output_path + '"'
 	puts algo_command 
-	system(algo_command)
+	#system(algo_command)
+
+	# Converting the large avi file to a small mp4 file
+	mp4_path = output_path.chomp(File.extname(output_path)) + ".mp4"
+	puts mp4_path
+	convert_command = ffmpeg_path + ' -i "' + output_path + '" -vcodec mpeg4 -b:v 1200k "' + mp4_path + '"'
+	puts convert_command
+	#system(convert_command)
+
+	# Doing everything on a thread
+	Thread.new {
+		system(ffmpeg_command)
+		system(algo_command)
+		system(convert_command)
+		FileUtils.remove_file(output_path)
+		FileUtils.remove_dir(images_fodler)
+	}
+
+	"Wait a minute..."
+	# Deleting the big avi file
+	#FileUtils.remove_file(output_path)
+
+	# Deleting the images directory
+	#FileUtils.remove_dir(images_fodler)
 
 end
 
