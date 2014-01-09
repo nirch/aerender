@@ -92,7 +92,7 @@ post '/remake' do
 	FileUtils.mkdir remake_folder
 
 	# Returning the remake object ID
-	remake_objectId
+	result = remake_objectId.to_s
 end
 
 
@@ -101,7 +101,7 @@ post '/footage' do
 	# input
 	source = params[:file][:tempfile]
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
-	scene_id = params[:scene_id]
+	scene_id = params[:scene_id].to_i
 
 	# Fetching the remake for this footage
 	remakes = settings.db.collection("Remakes")
@@ -122,7 +122,7 @@ end
 post '/foreground' do
 	# input
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
-	scene_id = params[:scene_id]
+	scene_id = params[:scene_id].to_i
 
 	# Fetching the remake for this footage
 	remakes = settings.db.collection("Remakes")
@@ -250,7 +250,7 @@ end
 
 get '/test/render' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52cd8d9edb25450d84000001")
+	remake_id = BSON::ObjectId.from_string("52ce54c6db25450a68000001")
 
 	# Fetching the remake and story for this remake
 	remakes = settings.db.collection("Remakes")
@@ -276,12 +276,21 @@ get '/test/render' do
 	puts "areder command line: #{aerenderCommandLine}"
 
 	Thread.new{
+		# Rendering the movie
 		system(aerenderCommandLine)
+
+		# Uploading the movie to S3
+		s3 = AWS::S3.new
+		bucket = s3.buckets['homageapp']
+		s3_upload_path = "Final Videos/" + File.basename(outputPath)
+		s3_object = bucket.objects[s3_upload_path]
+		s3_object.write(:file => file_name)
+		puts "S3 Path: " + s3_object.public_url
 
 		# Updating the DB that the movie is readt
 		remake["status"] = "Done"
+		remake[:video] = s3_object.public_url
 		result = remakes.update({_id: remake_id}, remake)
-
 	}
 
 
@@ -289,7 +298,7 @@ end
 
 get '/test/foreground' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52cd8d9edb25450d84000001")
+	remake_id = BSON::ObjectId.from_string("52ce48dddb254501f8000004")
 	scene_id = 1
 
 	# Fetching the remake for this footage
@@ -336,8 +345,8 @@ get '/test/foreground' do
 		system(png_convert_command)
 
 		# Deleting the images and algo folders
-		FileUtils.remove_dir(images_fodler)
-		FileUtils.remove_dir(output_folder)	
+		#FileUtils.remove_dir(images_fodler)
+		#FileUtils.remove_dir(output_folder)	
 
 		# Updating the DB that the process has started
 		remake["footages"][scene_id - 1]["status"] = "Done"
