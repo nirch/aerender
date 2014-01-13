@@ -95,6 +95,29 @@ post '/remake' do
 	result = remake_objectId.to_s
 end
 
+# Deletes a given remake
+delete '/remake/:remake_id' do
+	# input
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+
+	settings.db.collection("Remakes").remove({_id: remake_id})
+end
+
+# Returns a given remake id
+get '/remake/:remake_id' do
+	# input
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+
+	# Fetching the remake
+	remakes = settings.db.collection("Remakes")
+	remake = remakes.find_one(remake_id)
+
+	if remake then
+		remake.to_json
+	else
+		status 404
+	end
+end
 
 # Post a new footage (params are: uploaded file, remake id, scene id)
 post '/footage' do
@@ -168,7 +191,7 @@ post '/foreground' do
 		system(png_convert_command)
 
 		# Deleting the images and algo folders
-		FileUtils.remove_dir(images_fodler)
+		#FileUtils.remove_dir(images_fodler)
 		FileUtils.remove_dir(output_folder)	
 
 		# Updating the DB that the process has started
@@ -225,6 +248,13 @@ post '/render' do
 	}
 end
 
+get '/test/remake/delete' do
+	# input
+	remake_id = BSON::ObjectId.from_string("52cd89ecdb25450bb8000001")
+
+	settings.db.collection("Remakes").remove({_id: remake_id})
+end
+
 get '/test/s3upload' do
 	file_name = "C:/Users/Administrator/Documents/Remakes/52cd8d9edb25450d84000001/final_Test_52cd8d9edb25450d84000001.mp4"
 
@@ -250,7 +280,7 @@ end
 
 get '/test/render' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52ce54c6db25450a68000001")
+	remake_id = BSON::ObjectId.from_string("52cedc28db254513fc000004")
 
 	# Fetching the remake and story for this remake
 	remakes = settings.db.collection("Remakes")
@@ -298,7 +328,7 @@ end
 
 get '/test/foreground' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52ce48dddb254501f8000004")
+	remake_id = BSON::ObjectId.from_string("52cea62ddb25450c64000001")
 	scene_id = 1
 
 	# Fetching the remake for this footage
