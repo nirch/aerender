@@ -23,7 +23,7 @@ configure do
 	set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
 
 	# AWS Connection
-	aws_config = {access_key_id: "AKIAJND7DD6GPOPWPRYA", secret_access_key: "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"}
+	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
 	AWS.config(aws_config)
 end
 
@@ -38,8 +38,23 @@ def get_templates
 	templates = parsed_array
 end
 
+module RemakeStatus
+  New = 0
+  InProgress = 1
+  Rendering = 2
+  Done = 3
+end
+
+module FootageStatus
+  Open = 0
+  Uploaded = 1
+  Processing = 2
+  Ready = 3
+end
+
+
 # Get all stories
-get '/stories' do	
+get '/stories' do
 	stories_collection = settings.db.collection("Stories")
 	stories_docs = stories_collection.find({ }, {fields: {after_effects: 0}}).sort({order_id: 1})
 
@@ -47,6 +62,8 @@ get '/stories' do
 	for story_doc in stories_docs do
 		stories_json_array.push(story_doc.to_json)
 	end
+
+	puts "Returning " + stories_json_array.count.to_s + " stories"
 
 	stories = "[" + stories_json_array.join(",") + "]"
 	# stories = JSON[stories_docs]
@@ -59,15 +76,20 @@ post '/remake' do
 	user_id = params[:user_id]
 
 	remakes = settings.db.collection("Remakes")
-	remake = {story_id: story_id, user_id: user_id, status: "New"}
+	story = settings.db.collection("Stories").find_one(story_id)
+	remake_id = BSON::ObjectId.new
+	
+	puts "Creating a new remake for story <" + story["name"] + "> for user <" + user_id + "> with remake_id <" + remake_id.to_s + ">"
+
+	remake = {_id: remake_id, story_id: story_id, user_id: user_id, status: RemakeStatus::New, thumbnail: story["thumbnail"]}
 
 	# Creating the footages place holder based on the scenes of the story
-	story = settings.db.collection("Stories").find_one(story_id)
 	scenes = story["scenes"]
 	if scenes then
 		footages = Array.new
-		for scene in scenes do
-			footage = {scene_id: scene["id"], status: "Open"}
+		for scene in scenes do			
+			s3_destination = "Remakes" + "/" + remake_id.to_s + "/" + "raw_" + "scene_" + scene["id"].to_s + ".mov"
+			footage = {scene_id: scene["id"], status: FootageStatus::Open, raw_video_s3_key: s3_destination}
 			footages.push(footage)
 		end
 		remake[:footages] = footages
@@ -87,18 +109,22 @@ post '/remake' do
 	# Creating a new remake document in the DB
 	remake_objectId = remakes.save(remake)
 
+	puts "New remake saved in the DB with remake id " + remake_objectId.to_s
+
 	# Creating a new directory in the remakes folder
 	remake_folder = settings.remakes_folder + remake_objectId.to_s
 	FileUtils.mkdir remake_folder
 
 	# Returning the remake object ID
-	result = remake_objectId.to_s
+	result = remake.to_json
 end
 
 # Deletes a given remake
 delete '/remake/:remake_id' do
 	# input
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+
+	puts "Deleting remake " + remake_id.to_s
 
 	settings.db.collection("Remakes").remove({_id: remake_id})
 end
@@ -107,6 +133,8 @@ end
 get '/remake/:remake_id' do
 	# input
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+
+	puts "Getting remake with id " + remake_id.to_s
 
 	# Fetching the remake
 	remakes = settings.db.collection("Remakes")
@@ -118,6 +146,26 @@ get '/remake/:remake_id' do
 		status 404
 	end
 end
+
+# Returns all the remakes of a given user_id
+get '/remakes/user/:user_id' do
+	# input
+	user_id = params[:user_id];
+
+	puts "Getting remakes for user " + user_id
+
+	remakes_docs = settings.db.collection("Remakes").find({user_id: user_id});
+
+	remakes_json_array = Array.new
+	for remake_doc in remakes_docs do
+		remakes_json_array.push(remake_doc.to_json)
+	end
+
+	puts "Returning " + remakes_json_array.count.to_s + " remakes"
+
+	remakes = "[" + remakes_json_array.join(",") + "]"
+end
+
 
 # Post a new footage (params are: uploaded file, remake id, scene id)
 post '/footage' do
@@ -137,7 +185,7 @@ post '/footage' do
 
 	# Updating the DB
 	remake["footages"][scene_id - 1][:raw] = destination
-	remake["footages"][scene_id - 1][:"status"] = "Uploaded"
+	remake["footages"][scene_id - 1][:"status"] = FootageStatus::Uploaded
 	result = remakes.update({_id: remake_id}, remake)
 end
 
@@ -153,7 +201,7 @@ post '/foreground' do
 	story = settings.db.collection("Stories").find_one(remake["story_id"])
 
 	# Updating the DB that the process has started
-	remake["footages"][scene_id - 1]["status"] = "In Process"
+	remake["footages"][scene_id - 1]["status"] = FootageStatus::Processing
 	result = remakes.update({_id: remake_id}, remake)
 
 	raw_video = remake["footages"][scene_id - 1]["raw"]
@@ -195,7 +243,7 @@ post '/foreground' do
 		FileUtils.remove_dir(output_folder)	
 
 		# Updating the DB that the process has started
-		remake["footages"][scene_id - 1]["status"] = "Done"
+		remake["footages"][scene_id - 1]["status"] = FootageStatus::Ready
 		remake["footages"][scene_id - 1][:processed] = output_video_path		
 		result = remakes.update({_id: remake_id}, remake)	
 	}
@@ -212,7 +260,7 @@ post '/render' do
 	story = settings.db.collection("Stories").find_one(remake["story_id"])
 
 	# Updating the DB that the process has started
-	remake["status"] = "Rendering"
+	remake["status"] = RemakeStatus::Rendering
 	result = remakes.update({_id: remake_id}, remake)
 
 	# copying all videos to after project
@@ -242,11 +290,12 @@ post '/render' do
 		puts "S3 Path: " + s3_object.public_url
 
 		# Updating the DB that the movie is readt
-		remake["status"] = "Done"
+		remake["status"] = RemakeStatus::Done
 		remake[:video] = s3_object.public_url
 		result = remakes.update({_id: remake_id}, remake)
 	}
 end
+
 
 get '/test/remake/delete' do
 	# input
@@ -255,6 +304,30 @@ get '/test/remake/delete' do
 	settings.db.collection("Remakes").remove({_id: remake_id})
 end
 
+get '/test/s3/upload' do
+	form = '<form action="/test/s3/upload" method="post" enctype="multipart/form-data"> <input type="file" accept="video/*" name="file"> <input type="submit" value="Upload!"> </form>'
+	erb form
+end
+
+post '/test/s3/upload' do
+	file = params[:file][:tempfile]
+	file_path = file.path
+
+	s3 = AWS::S3.new
+	bucket = s3.buckets['homageapp']
+
+	basename = File.basename(file_path)
+	s3_object = bucket.objects['Temp10/' + basename]
+
+	Thread.new{
+		puts 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
+		s3_object.write(file, :acl => :public_read)
+		puts "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
+	}
+end
+
+
+=begin
 get '/test/s3upload' do
 	file_name = "C:/Users/Administrator/Documents/Remakes/52cd8d9edb25450d84000001/final_Test_52cd8d9edb25450d84000001.mp4"
 
@@ -273,10 +346,8 @@ get '/test/s3upload' do
 	#File.open("c:/image.ctr", "w") do |f|
   	#	f.write(bucket.objects['Stories/Test/Scenes/1/Test_Scene_1_Contour.ctr'].read)
 	#end
-
-
-
 end
+=end
 
 get '/test/render' do
 	# input
@@ -443,19 +514,25 @@ end
 
 get '/test/create/remake' do
 	#input
-	story_id = BSON::ObjectId.from_string("52c4341d220b10ce920001a7")
-	user_id = "test@gmail.com"
+	story_id = BSON::ObjectId.from_string("52cddaf80fad07c3290001aa")
+	user_id = "nir@gmail.com"
 
 	remakes = settings.db.collection("Remakes")
-	remake = {story_id: story_id, user_id: user_id, status: "New"}
+	story = settings.db.collection("Stories").find_one(story_id)
+
+	puts "Creating a new remake for story <" + story["name"] + "> for user <" + user_id + ">"
+
+	remake_id = BSON::ObjectId.new
+	puts "remake_id = " + remake_id.to_s
+	remake = {_id: remake_id, story_id: story_id, user_id: user_id, status: RemakeStatus::New, thumbnail: story["thumbnail"]}
 
 	# Creating the footages place holder based on the scenes of the story
-	story = settings.db.collection("Stories").find_one(story_id)
 	scenes = story["scenes"]
 	if scenes then
 		footages = Array.new
-		for scene in scenes do
-			footage = {scene_id: scene["id"]}
+		for scene in scenes do			
+			s3_destination = "Remakes" + "/" + remake_id.to_s + "/" + "raw_" + "scene_" + scene["id"].to_s + ".mov"
+			footage = {scene_id: scene["id"], status: FootageStatus::Open, raw_video_s3_key: s3_destination}
 			footages.push(footage)
 		end
 		remake[:footages] = footages
@@ -475,14 +552,14 @@ get '/test/create/remake' do
 	# Creating a new remake document in the DB
 	remake_objectId = remakes.save(remake)
 
+	puts "New remake saved in the DB with remake id " + remake_objectId.to_s
+
 	# Creating a new directory in the remakes folder
 	remake_folder = settings.remakes_folder + remake_objectId.to_s
 	FileUtils.mkdir remake_folder
 
 	# Returning the remake object ID
-	remake_objectId
-
-
+	result = remake.to_json
 
 	#remakes = settings.db.collection("Remakes")
 	#remake = {story_id: story_id, user_id: user_id}
