@@ -81,15 +81,19 @@ post '/remake' do
 	
 	puts "Creating a new remake for story <" + story["name"] + "> for user <" + user_id + "> with remake_id <" + remake_id.to_s + ">"
 
-	remake = {_id: remake_id, story_id: story_id, user_id: user_id, status: RemakeStatus::New, thumbnail: story["thumbnail"]}
+	s3_folder = "Remakes" + "/" + remake_id.to_s + "/"
+	s3_video = s3_folder + story["name"] + "_" + remake_id.to_s + ".mp4"
+
+	remake = {_id: remake_id, story_id: story_id, user_id: user_id, status: RemakeStatus::New, thumbnail: story["thumbnail"], video_s3_key: s3_video}
 
 	# Creating the footages place holder based on the scenes of the story
 	scenes = story["scenes"]
 	if scenes then
 		footages = Array.new
 		for scene in scenes do			
-			s3_destination = "Remakes" + "/" + remake_id.to_s + "/" + "raw_" + "scene_" + scene["id"].to_s + ".mov"
-			footage = {scene_id: scene["id"], status: FootageStatus::Open, raw_video_s3_key: s3_destination}
+			s3_destination_raw = s3_folder + "raw_" + "scene_" + scene["id"].to_s + ".mov"
+			s3_destination_processed = s3_folder + "processed_" + "scene_" + scene["id"].to_s + ".mov"
+			footage = {scene_id: scene["id"], status: FootageStatus::Open, raw_video_s3_key: s3_destination_raw, processed_video_s3_key: s3_destination_processed}
 			footages.push(footage)
 		end
 		remake[:footages] = footages
@@ -112,8 +116,8 @@ post '/remake' do
 	puts "New remake saved in the DB with remake id " + remake_objectId.to_s
 
 	# Creating a new directory in the remakes folder
-	remake_folder = settings.remakes_folder + remake_objectId.to_s
-	FileUtils.mkdir remake_folder
+	#remake_folder = settings.remakes_folder + remake_objectId.to_s
+	#FileUtils.mkdir remake_folder
 
 	# Returning the remake object ID
 	result = remake.to_json
@@ -166,6 +170,37 @@ get '/remakes/user/:user_id' do
 	remakes = "[" + remakes_json_array.join(",") + "]"
 end
 
+def upload_to_s3 (file, s3_key, acl)
+
+	s3 = AWS::S3.new
+	bucket = s3.buckets['homageapp']
+	s3_object = bucket.objects[s3_key]
+
+	puts 'Uploading the file <' + file.path + '> to S3 path <' + s3_object.key + '>'
+	s3_object.write(file, :acl => acl)
+	puts "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
+
+	return s3_object
+
+end
+
+def download_from_s3 (s3_key, local_path)
+
+	s3 = AWS::S3.new
+	bucket = s3.buckets['homageapp']
+
+	puts "Downloading file from S3 with key " + s3_key
+	s3_object = bucket.objects[s3_key]
+
+	File.open(local_path, 'wb') do |file|
+  		s3_object.read do |chunk|
+    		file.write(chunk)
+    	end
+    end
+
+  	puts "File downloaded successfully to: " + local_path
+end
+
 
 # Post a new footage (params are: uploaded file, remake id, scene id)
 post '/footage' do
@@ -174,21 +209,97 @@ post '/footage' do
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
 	scene_id = params[:scene_id].to_i
 
+	new_footage source, remake_id, scene_id
+
+end
+
+def new_footage (video, remake_id, scene_id)
+
+	puts "New footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s
+
 	# Fetching the remake for this footage
 	remakes = settings.db.collection("Remakes")
 	remake = remakes.find_one(remake_id)
 
-	# Copying the footage to the remake folder
-	destination_file_name = "raw_" + "scene_" + scene_id.to_s + ".mov"
-	destination = settings.remakes_folder + remake_id.to_s + "/" + destination_file_name
-	FileUtils.copy(source.path, destination)
+	# Uploading to S3
+	s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
+	upload_to_s3 video, s3_key, :private
 
 	# Updating the DB
-	remake["footages"][scene_id - 1][:raw] = destination
 	remake["footages"][scene_id - 1][:"status"] = FootageStatus::Uploaded
 	result = remakes.update({_id: remake_id}, remake)
+	puts "DB Result: " + result.to_s
+
+	Thread.new{
+		# Running the foreground extraction algorithm
+		foreground_extraction remake_id, scene_id
+	}
+
 end
 
+
+def foreground_extraction (remake_id, scene_id)
+	# Fetching the remake for this footage
+	remakes = settings.db.collection("Remakes")
+	remake = remakes.find_one(remake_id)
+	story = settings.db.collection("Stories").find_one(remake["story_id"])
+
+	puts "Running foreground extraction for scene " + scene_id.to_s + " for remkae " + remake_id.to_s
+
+	# Updating the DB that the process has started
+	remake["footages"][scene_id - 1]["status"] = FootageStatus::Processing
+	result = remakes.update({_id: remake_id}, remake)
+
+	# Creating a new directory for the foreground extraction
+	foreground_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "/"
+	FileUtils.mkdir foreground_folder
+
+	# Downloading the raw video from s3
+	raw_video_s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
+	raw_video_file_name = File.basename(raw_video_s3_key)
+	raw_video_file_path = foreground_folder + raw_video_file_name	
+	download_from_s3 raw_video_s3_key, raw_video_file_path
+
+	# images from the video
+	images_fodler = foreground_folder + "Images/"
+	ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
+	puts "*** Video to images *** \n" + ffmpeg_command
+	FileUtils.mkdir images_fodler
+	system(ffmpeg_command)
+
+	# foreground extraction algorithm
+	contour_path = story["scenes"][scene_id - 1]["contour"]
+	roi_path = story["scenes"][scene_id - 1]["ebox"]
+	first_image_path = images_fodler + "Image-0001.jpg"
+	output_folder = File.dirname(raw_video_file_path) + "/" + File.basename(raw_video_file_path, ".*") + "_Foreground/"
+	output_path = output_folder + "Output"
+	algo_command = settings.algo_path + ' "' + contour_path + '" "' + roi_path + '" "' + first_image_path + '" -png "' + output_path + '"'
+	puts "*** Running Algo *** \n" + algo_command 
+	FileUtils.mkdir output_folder
+	system(algo_command)
+
+	# pngs to video
+	output_file_name = "foreground_" + "scene_" + scene_id.to_s + ".mov"
+	output_video_path = File.dirname(raw_video_file_path) + "/" + output_file_name
+	png_convert_command = settings.ffmpeg_path + ' -i "' + output_path.chomp(File.extname(output_path)) + '-%2d.png"' + ' -vcodec png "' + output_video_path + '"'
+	puts "*** png to video *** \n" + png_convert_command
+	system(png_convert_command)
+
+	# upload to s3
+	processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
+	upload_to_s3 File.new(output_video_path), processed_video_s3_key, :private
+
+	# Updating the DB
+	remake["footages"][scene_id - 1]["status"] = FootageStatus::Ready
+	remake["footages"][scene_id - 1][:processed] = output_video_path		
+	result = remakes.update({_id: remake_id}, remake)	
+	puts 'DB update: footage ' + scene_id.to_s + ' for remake ' + remake_id.to_s + ' status changed to Ready'
+
+	# Deleting the folder after everything was updated successfully
+	#FileUtils.remove_dir(foreground_folder)
+end
+
+=begin
 # Doing the foreground extraction of the video (params: remake id, scene id)
 post '/foreground' do
 	# input
@@ -249,50 +360,57 @@ post '/foreground' do
 	}
 
 end
+=end
 
-post '/render' do
-	# input
-	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+def render_video (remake_id)
 
 	# Fetching the remake and story for this remake
 	remakes = settings.db.collection("Remakes")
 	remake = remakes.find_one(remake_id)
 	story = settings.db.collection("Stories").find_one(remake["story_id"])
 
+	puts "Starting the rendering of remake " + remake_id.to_s
+
 	# Updating the DB that the process has started
 	remake["status"] = RemakeStatus::Rendering
 	result = remakes.update({_id: remake_id}, remake)
 
-	# copying all videos to after project
+	# copying all videos to after project (downloading them from s3)
 	for scene in story["after_effects"]["scenes"] do
-		processed_video = remake["footages"][scene["id"] - 1]["processed"]
+		processed_video_s3_key = remake["footages"][scene["id"] - 1]["processed_video_s3_key"]
 		destination = settings.aeProjectsFolder + story["after_effects"]["folder"] + "/(Footage)/" + scene["file"]
-		puts "copy to: "+ destination
-		FileUtils.copy(processed_video, destination)
+		download_from_s3 processed_video_s3_key, destination
 	end
 
 	projectPath = settings.aeProjectsFolder + story["after_effects"]["folder"] + "/" + story["after_effects"]["project"]
-	output_file_name = "final_" + story["name"] + "_" + remake_id.to_s + ".mp4"
-	outputPath = settings.remakes_folder + remake_id.to_s + "/" + output_file_name
-	aerenderCommandLine = '"' + settings.aerenderPath + '"' + ' -project "' + projectPath + '"' + ' -rqindex 1 -output "' + outputPath + '"'
-	puts "areder command line: #{aerenderCommandLine}"
+	output_file_name = story["name"] + "_" + remake_id.to_s + ".mp4"
+	output_path = settings.outputFolder + output_file_name
+	aerenderCommandLine = '"' + settings.aerenderPath + '"' + ' -project "' + projectPath + '"' + ' -rqindex 1 -output "' + output_path + '"'
+	puts "aerender command line: #{aerenderCommandLine}"
+
+	# Rendering the movie
+	system(aerenderCommandLine)
+
+	video_s3_key = remake["video_s3_key"]
+
+	# Uploading the movie to S3
+	s3_object = upload_to_s3 File.new(output_path), video_s3_key, :public_read
+
+	# Updating the DB that the movie is readt
+	remake["status"] = RemakeStatus::Done
+	remake[:video] = s3_object.public_url.to_s
+	result = remakes.update({_id: remake_id}, remake)
+
+	puts "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + s3_object.public_url.to_s
+
+end
+
+post '/render' do
+	# input
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
 
 	Thread.new{
-		# Rendering the movie
-		system(aerenderCommandLine)
-
-		# Uploading the movie to S3
-		s3 = AWS::S3.new
-		bucket = s3.buckets['homageapp']
-		s3_upload_path = "Final Videos/" + File.basename(outputPath)
-		s3_object = bucket.objects[s3_upload_path]
-		s3_object.write(:file => file_name)
-		puts "S3 Path: " + s3_object.public_url
-
-		# Updating the DB that the movie is readt
-		remake["status"] = RemakeStatus::Done
-		remake[:video] = s3_object.public_url
-		result = remakes.update({_id: remake_id}, remake)
+		render_video remake_id
 	}
 end
 
@@ -304,6 +422,15 @@ get '/test/remake/delete' do
 	settings.db.collection("Remakes").remove({_id: remake_id})
 end
 
+get '/test/s3/download' do
+
+	s3_key = 'Remakes/52d57901db25451344000001/raw_scene_1.mov'
+	local_path = settings.remakes_folder + File.basename(s3_key)
+
+	download_from_s3 s3_key, local_path
+
+end
+
 get '/test/s3/upload' do
 	form = '<form action="/test/s3/upload" method="post" enctype="multipart/form-data"> <input type="file" accept="video/*" name="file"> <input type="submit" value="Upload!"> </form>'
 	erb form
@@ -312,18 +439,59 @@ end
 post '/test/s3/upload' do
 	file = params[:file][:tempfile]
 	file_path = file.path
+	s3_key = 'Temp/' + File.basename(file_path)
 
+	s3_object = upload_to_s3 file, s3_key, :private
+
+	puts s3_object.public_url
+end
+
+get '/test/footage' do
+	form = '<form action="/test/footage" method="post" enctype="multipart/form-data"> <input type="file" accept="video/*" name="file"> <input type="submit" value="Upload!"> </form>'
+	erb form
+end
+
+post '/test/footage' do
+	#input
+	#source = "C:/Users/Administrator/AppData/Local/Temp/2/RackMultipart20140107-3512-1fpalb1"
+
+	file = params[:file][:tempfile]
+	file_path = file.path
+	remake_id = BSON::ObjectId.from_string("52d68511db25450da4000001")
+	scene_id = 1
+
+	new_footage file, remake_id, scene_id
+
+=begin
+	puts "Uploading footage for scene " + scene_id.to_s + " of remake " + remake_id.to_s
+
+	# Fetching the remake for this footage
+	remakes = settings.db.collection("Remakes")
+	remake = remakes.find_one(remake_id)
+
+	# Copying the footage to the remake folder
+	#destination_file_name = "raw_" + "scene_" + scene_id.to_s + ".mov"
+	#destination = settings.remakes_folder + remake_id.to_s + "/" + destination_file_name
+	#FileUtils.copy(source.path, destination)
+
+	# Uploading the file to S3
 	s3 = AWS::S3.new
 	bucket = s3.buckets['homageapp']
-
-	basename = File.basename(file_path)
-	s3_object = bucket.objects['Temp10/' + basename]
+	s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
+	s3_object = bucket.objects[s3_key]
 
 	Thread.new{
 		puts 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
 		s3_object.write(file, :acl => :public_read)
 		puts "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
+
+		# Updating the DB
+		#remake["footages"][scene_id - 1][:raw] = destination
+		remake["footages"][scene_id - 1][:"status"] = FootageStatus::Uploaded
+		result = remakes.update({_id: remake_id}, remake)
+		puts "DB Result: " + result.to_s
 	}
+=end
 end
 
 
@@ -351,134 +519,24 @@ end
 
 get '/test/render' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52cedc28db254513fc000004")
-
-	# Fetching the remake and story for this remake
-	remakes = settings.db.collection("Remakes")
-	remake = remakes.find_one(remake_id)
-	story = settings.db.collection("Stories").find_one(remake["story_id"])
-
-	# Updating the DB that the process has started
-	remake["status"] = "Rendering"
-	result = remakes.update({_id: remake_id}, remake)
-
-	# copying all videos to after project
-	for scene in story["after_effects"]["scenes"] do
-		processed_video = remake["footages"][scene["id"] - 1]["processed"]
-		destination = settings.aeProjectsFolder + story["after_effects"]["folder"] + "/(Footage)/" + scene["file"]
-		puts "copy to: "+ destination
-		FileUtils.copy(processed_video, destination)
-	end
-
-	projectPath = settings.aeProjectsFolder + story["after_effects"]["folder"] + "/" + story["after_effects"]["project"]
-	output_file_name = "final_" + story["name"] + "_" + remake_id.to_s + ".mp4"
-	outputPath = settings.remakes_folder + remake_id.to_s + "/" + output_file_name
-	aerenderCommandLine = '"' + settings.aerenderPath + '"' + ' -project "' + projectPath + '"' + ' -rqindex 1 -output "' + outputPath + '"'
-	puts "areder command line: #{aerenderCommandLine}"
+	remake_id = BSON::ObjectId.from_string("52d6a0dcdb254505fc000001")
 
 	Thread.new{
-		# Rendering the movie
-		system(aerenderCommandLine)
-
-		# Uploading the movie to S3
-		s3 = AWS::S3.new
-		bucket = s3.buckets['homageapp']
-		s3_upload_path = "Final Videos/" + File.basename(outputPath)
-		s3_object = bucket.objects[s3_upload_path]
-		s3_object.write(:file => file_name)
-		puts "S3 Path: " + s3_object.public_url
-
-		# Updating the DB that the movie is readt
-		remake["status"] = "Done"
-		remake[:video] = s3_object.public_url
-		result = remakes.update({_id: remake_id}, remake)
+		render_video remake_id
 	}
-
-
 end
 
 get '/test/foreground' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52cea62ddb25450c64000001")
+	remake_id = BSON::ObjectId.from_string("52d57901db25451344000001")
 	scene_id = 1
 
-	# Fetching the remake for this footage
-	remakes = settings.db.collection("Remakes")
-	remake = remakes.find_one(remake_id)
-	story = settings.db.collection("Stories").find_one(remake["story_id"])
-
-	# Updating the DB that the process has started
-	remake["footages"][scene_id - 1]["status"] = "In Process"
-	result = remakes.update({_id: remake_id}, remake)
-
-	raw_video = remake["footages"][scene_id - 1]["raw"]
-
-	# images from the video
-	images_fodler = File.dirname(raw_video) + "/" + File.basename(raw_video, ".*") + "_Images/"
-	ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video + '" -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
-	puts "*** Video to images *** \n" + ffmpeg_command
-
-	# foreground extraction algorithm
-	contour_path = story["scenes"][scene_id - 1]["contour"]
-	roi_path = story["scenes"][scene_id - 1]["ebox"]
-	first_image_path = images_fodler + "Image-0001.jpg"
-	output_folder = File.dirname(raw_video) + "/" + File.basename(raw_video, ".*") + "_Foreground/"
-	output_path = output_folder + "Output"
-	algo_command = settings.algo_path + ' "' + contour_path + '" "' + roi_path + '" "' + first_image_path + '" -png "' + output_path + '"'
-	puts "*** Running Algo *** \n" + algo_command 
-
-	# pngs to video
-	output_file_name = "foreground_" + "scene_" + scene_id.to_s + ".mov"
-	output_video_path = File.dirname(raw_video) + "/" + output_file_name
-	png_convert_command = settings.ffmpeg_path + ' -i "' + output_path.chomp(File.extname(output_path)) + '-%2d.png"' + ' -vcodec png "' + output_video_path + '"'
-	puts "*** png to video *** \n" + png_convert_command
-
-	Thread.new{
-		# Creating images folder and the images
-		FileUtils.mkdir images_fodler
-		system(ffmpeg_command)
-
-		# Creating algo folder and running the algo
-		FileUtils.mkdir output_folder
-		system(algo_command)
-
-		# Converting pngs to video
-		system(png_convert_command)
-
-		# Deleting the images and algo folders
-		#FileUtils.remove_dir(images_fodler)
-		#FileUtils.remove_dir(output_folder)	
-
-		# Updating the DB that the process has started
-		remake["footages"][scene_id - 1]["status"] = "Done"
-		remake["footages"][scene_id - 1][:processed] = output_video_path		
-		result = remakes.update({_id: remake_id}, remake)	
-	}
+	#Thread.new{
+		foreground_extraction remake_id, scene_id
+	#}
 
 end
 
-
-get '/test/footage' do
-	#input
-	source = "C:/Users/Administrator/AppData/Local/Temp/2/RackMultipart20140107-3512-1fpalb1"
-	remake_id = BSON::ObjectId.from_string("52cd8d9edb25450d84000001")
-	scene_id = 1
-
-	# Fetching the remake and story for this footage
-	remakes = settings.db.collection("Remakes")
-	remake = remakes.find_one(remake_id)
-
-	destination_file_name = "raw_" + "scene_" + scene_id.to_s + ".mov"
-	destination = settings.remakes_folder + remake_id.to_s + "/" + destination_file_name
-	
-	puts "Copying file to: " + destination
-	FileUtils.copy(source, destination)
-
-	# Updating the DB
-	remake["footages"][scene_id - 1][:raw] = destination
-	puts remake
-	result = remakes.update({_id: remake_id}, remake)
-end
 
 get '/test/update/remake' do
 	#input
