@@ -83,8 +83,10 @@ post '/remake' do
 
 	s3_folder = "Remakes" + "/" + remake_id.to_s + "/"
 	s3_video = s3_folder + story["name"] + "_" + remake_id.to_s + ".mp4"
+	s3_thumbnail = s3_folder + story["name"] + "_" + remake_id.to_s + ".jpg"
 
-	remake = {_id: remake_id, story_id: story_id, user_id: user_id, status: RemakeStatus::New, thumbnail: story["thumbnail"], video_s3_key: s3_video}
+	remake = {_id: remake_id, story_id: story_id, user_id: user_id, status: RemakeStatus::New, 
+		thumbnail: story["thumbnail"], video_s3_key: s3_video, thumbnail_s3_key: s3_thumbnail}
 
 	# Creating the footages place holder based on the scenes of the story
 	scenes = story["scenes"]
@@ -237,6 +239,13 @@ def new_footage (video, remake_id, scene_id)
 
 end
 
+def extract_thumbnail (video_path, time, thumbnail_path)
+	#ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -t 1 -s 480x320 -f image2 ' + '"' + thumbnail_path + '"'
+	ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -frames:v 1 -s 480x320 ' + '"' + thumbnail_path + '"'
+	puts "*** Extract Thumbnail from Video *** \n" + ffmpeg_command
+	system(ffmpeg_command)
+end
+
 
 def foreground_extraction (remake_id, scene_id)
 	# Fetching the remake for this footage
@@ -285,13 +294,21 @@ def foreground_extraction (remake_id, scene_id)
 	puts "*** png to video *** \n" + png_convert_command
 	system(png_convert_command)
 
+	# Adding audio to video
+	#ffmpeg -i "C:\Development\ffmpeg\Tests\raw_scene_1.mov" -i "C:\Development\ffmpeg\Tests\foreground_scene_1.mov" -c copy -map 0:1 -map 1:0 -shortest "C:\Development\ffmpeg\Tests\audio_scene_1.mov"
+	output_with_audio_path = File.dirname(raw_video_file_path) + "/" + "audio_foreground_scene" + scene_id.to_s + ".mov"
+	add_audio_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -i "' + output_video_path + '" -c copy -map 0:1 -map 1:0 "' + output_with_audio_path + '"'
+	puts "*** audio to video *** \n" + add_audio_command
+	system(add_audio_command)
+
+
 	# upload to s3
 	processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
-	upload_to_s3 File.new(output_video_path), processed_video_s3_key, :private
+	upload_to_s3 File.new(output_with_audio_path), processed_video_s3_key, :private
 
 	# Updating the DB
 	remake["footages"][scene_id - 1]["status"] = FootageStatus::Ready
-	remake["footages"][scene_id - 1][:processed] = output_video_path		
+	remake["footages"][scene_id - 1][:processed] = output_with_audio_path		
 	result = remakes.update({_id: remake_id}, remake)	
 	puts 'DB update: footage ' + scene_id.to_s + ' for remake ' + remake_id.to_s + ' status changed to Ready'
 
@@ -391,17 +408,25 @@ def render_video (remake_id)
 	# Rendering the movie
 	system(aerenderCommandLine)
 
+	# Creating a thumbnail from the video
+	thumbnail_path = File.dirname(output_path) + "/" + File.basename(output_path,".*") + ".jpg"
+	thumbnail_rip_time = story["thumbnail_rip"]
+	extract_thumbnail output_path, thumbnail_rip_time ,thumbnail_path
+
 	video_s3_key = remake["video_s3_key"]
+	thumbnail_s3_key = remake["thumbnail_s3_key"]
 
-	# Uploading the movie to S3
-	s3_object = upload_to_s3 File.new(output_path), video_s3_key, :public_read
+	# Uploading the movie and thumbnail to S3
+	s3_object_video = upload_to_s3 File.new(output_path), video_s3_key, :public_read
+	s3_object_thumbnail = upload_to_s3 File.new(thumbnail_path), thumbnail_s3_key, :public_read
 
-	# Updating the DB that the movie is readt
+	# Updating the DB that the movie is ready
 	remake["status"] = RemakeStatus::Done
-	remake[:video] = s3_object.public_url.to_s
+	remake[:video] = s3_object_video.public_url.to_s
+	remake["thumbnail"] = s3_object_thumbnail.public_url.to_s	
 	result = remakes.update({_id: remake_id}, remake)
 
-	puts "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + s3_object.public_url.to_s
+	puts "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + s3_object_video.public_url.to_s
 
 end
 
@@ -417,7 +442,7 @@ end
 
 get '/test/remake/delete' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52cd89ecdb25450bb8000001")
+	remake_id = BSON::ObjectId.from_string("52d81869db25450c14000002")
 
 	settings.db.collection("Remakes").remove({_id: remake_id})
 end
@@ -430,6 +455,20 @@ get '/test/s3/download' do
 	download_from_s3 s3_key, local_path
 
 end
+
+get '/test/s3/upload/big' do
+
+	file_path = "C:/Users/Administrator/Documents/Remakes/52d6a0dcdb254505fc000001_scene_1/foreground_scene_1.mov"
+	s3 = AWS::S3.new
+	bucket = s3.buckets['homageapp']
+	s3_key = 'Temp/' + File.basename(file_path)
+	s3_object = bucket.objects[s3_key]
+
+	puts 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
+	s3_object.write(:file => file_path, :acl => :private)
+	puts "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
+end
+
 
 get '/test/s3/upload' do
 	form = '<form action="/test/s3/upload" method="post" enctype="multipart/form-data"> <input type="file" accept="video/*" name="file"> <input type="submit" value="Upload!"> </form>'
@@ -519,7 +558,7 @@ end
 
 get '/test/render' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52d6a0dcdb254505fc000001")
+	remake_id = BSON::ObjectId.from_string("52d82fa7db254516a0000001")
 
 	Thread.new{
 		render_video remake_id
@@ -528,12 +567,12 @@ end
 
 get '/test/foreground' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52d57901db25451344000001")
+	remake_id = BSON::ObjectId.from_string("52d826d4db254516d8000001")
 	scene_id = 1
 
-	#Thread.new{
+	Thread.new{
 		foreground_extraction remake_id, scene_id
-	#}
+	}
 
 end
 
@@ -643,6 +682,14 @@ get '/test/s3download' do
 	#open('c:/image.png', 'wb') do |file|
   	#	file << open('https://s3.amazonaws.com/homageapp/Stories/Test/Scenes/1/Test_Scene_1_Silhouette.png').read
 	#end
+end
+
+get '/test/thumbnail' do
+	video_path = "C:/Users/Administrator/Documents/AE Output/Test_52d6a0dcdb254505fc000001.mp4"
+	time = 1.2
+	thumbnail_path = "C:/Users/Administrator/Documents/AE Output/Test__52d6a0dcdb254505fc000001_10.jpg"
+
+	extract_thumbnail video_path, time, thumbnail_path
 end
 
 
