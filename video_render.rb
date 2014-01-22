@@ -173,6 +173,26 @@ get '/remakes/user/:user_id' do
 	remakes = "[" + remakes_json_array.join(",") + "]"
 end
 
+# Returns all the remakes of a given story
+get '/remakes/story/:story_id' do
+	# input
+	story_id = BSON::ObjectId.from_string(params[:story_id])
+
+	puts "Getting remakes for story " + story_id.to_s
+
+	remakes_docs = settings.db.collection("Remakes").find({story_id: story_id, status: RemakeStatus::Done});
+
+	remakes_json_array = Array.new
+	for remake_doc in remakes_docs do
+		remakes_json_array.push(remake_doc.to_json)
+	end
+
+	puts "Returning " + remakes_json_array.count.to_s + " remakes for story " + story_id.to_s
+
+	remakes = "[" + remakes_json_array.join(",") + "]"
+end
+
+
 def upload_to_s3 (file, s3_key, acl)
 
 	s3 = AWS::S3.new
@@ -718,12 +738,19 @@ end
 =end
 
 get '/test/render' do
-	# input
-	remake_id = BSON::ObjectId.from_string("52df6fb2db254507d0000014")
 
-	Thread.new{
-		render_video remake_id
-	}
+	form = '<form action="/render" method="post" enctype="multipart/form-data"> Remake ID: <input type="text" name="remake_id"> <input type="submit" value="Render!"> </form>'
+	erb form
+
+
+
+	# input
+#	remake_id = BSON::ObjectId.from_string("52df6fb2db254507d0000014")
+
+#	Thread.new{
+#		render_video remake_id
+#	}
+
 end
 
 get '/test/foreground' do
