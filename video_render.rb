@@ -6,6 +6,7 @@ require 'json'
 require 'fileutils'
 require 'open-uri'
 require 'aws-sdk'
+#require 'sinatra-logger'
 
 #include Mongo
 
@@ -25,6 +26,26 @@ configure do
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
 	AWS.config(aws_config)
+
+	# Logger
+	#file = File.new("#{settings.root}/log/#{settings.environment}.log", 'a+')
+ 	#file.sync = true
+  	#use Rack::CommonLogger, file  	
+  	#register(Sinatra::Logger)
+  	#puts Sinatra::Logger.version
+
+  	#log = File.new("sinatra.log", "a+")
+  	#log.sync = true
+  	#$stdout.reopen(log)
+  	#$stderr.reopen(log)
+
+  	#logger_file = Logger.new("sinatra.log")
+  	#logger_file.sync = true
+  	#set :my_logger, logger_file
+	#use Rack::CommonLogger, logger_file  	
+
+  	#enable :logging, :dump_errors
+  	#set :raise_errors, true
 end
 
 def get_templates
@@ -224,6 +245,27 @@ def download_from_s3 (s3_key, local_path)
   	puts "File downloaded successfully to: " + local_path
 end
 
+get '/test/text' do
+	form = '<form action="/text" method="post" enctype="multipart/form-data"> Remake ID: <input type="text" name="remake_id"> Text ID: <input type="text" name="text_id"> Text: <input type="text" name="text"> <input type="submit" value="Text!"> </form>'
+	erb form
+end
+
+
+post '/text' do
+	#input
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+	text_id = params[:text_id].to_i	
+	text = params[:text]
+
+	puts "Text <" + text + "> applied for remake <" + remake_id.to_s + "> text_id <" + text_id.to_s + ">"
+
+	remakes = settings.db.collection("Remakes")
+	result = remakes.update({_id: remake_id, "texts.text_id" => text_id}, {"$set" => {"texts.$.text" => text}})
+	#result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Uploaded}})
+
+	# Returning the remake after the DB update
+	remake = remakes.find_one(remake_id).to_json
+end
 
 # Post a new footage (params are: uploaded file, remake id, scene id)
 post '/footage' do
@@ -233,6 +275,8 @@ post '/footage' do
 
 	new_footage remake_id, scene_id
 
+	# Returning the remake after the DB update
+	remake = remakes.find_one(remake_id).to_json
 end
 
 def new_footage (remake_id, scene_id)
@@ -252,7 +296,7 @@ def new_footage (remake_id, scene_id)
 
 	Thread.new{
 		# Running the foreground extraction algorithm
-		foreground_extraction remake_id, scene_id
+		#foreground_extraction remake_id, scene_id
 	}
 
 end
@@ -573,6 +617,11 @@ get '/test/remake/ready/wait/:remake_id' do
 
 		puts "sleep left = " + sleep_for.to_s
 	}
+end
+
+get '/test/logger' do
+	logger.info "My first logging"
+	logger.error "Error log"
 end
 
 
