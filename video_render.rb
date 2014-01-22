@@ -43,6 +43,7 @@ module RemakeStatus
   InProgress = 1
   Rendering = 2
   Done = 3
+  Timeout = 4
 end
 
 module FootageStatus
@@ -207,15 +208,48 @@ end
 # Post a new footage (params are: uploaded file, remake id, scene id)
 post '/footage' do
 	# input
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+	scene_id = params[:scene_id].to_i
+
+	new_footage remake_id, scene_id
+
+end
+
+def new_footage (remake_id, scene_id)
+
+	puts "New footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s
+
+	# Fetching the remake for this footage
+	remakes = settings.db.collection("Remakes")
+
+	# Updating the status of this remake to in progress
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::InProgress}})
+
+	# Updating the status of this footage to uploaded
+	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Uploaded}})
+	puts "Footage status updated to Uploaded (1) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	#puts "DB Result: " + result.to_s
+
+	Thread.new{
+		# Running the foreground extraction algorithm
+		foreground_extraction remake_id, scene_id
+	}
+
+end
+
+
+# Post a new footage (params are: uploaded file, remake id, scene id)
+post '/footage_prototype' do
+	# input
 	source = params[:file][:tempfile]
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
 	scene_id = params[:scene_id].to_i
 
-	new_footage source, remake_id, scene_id
+	new_footage_prototype source, remake_id, scene_id
 
 end
 
-def new_footage (video, remake_id, scene_id)
+def new_footage_prototype (video, remake_id, scene_id)
 
 	puts "New footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s
 
@@ -227,10 +261,13 @@ def new_footage (video, remake_id, scene_id)
 	s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
 	upload_to_s3 video, s3_key, :private
 
-	# Updating the DB
-	remake["footages"][scene_id - 1][:"status"] = FootageStatus::Uploaded
-	result = remakes.update({_id: remake_id}, remake)
-	puts "DB Result: " + result.to_s
+	# Updating the status of this remake to in progress
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::InProgress}})
+
+	# Updating the status of this footage to uploaded
+	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Uploaded}})
+	puts "Footage status updated to Uploaded (1) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	#puts "DB Result: " + result.to_s
 
 	Thread.new{
 		# Running the foreground extraction algorithm
@@ -241,7 +278,7 @@ end
 
 def extract_thumbnail (video_path, time, thumbnail_path)
 	#ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -t 1 -s 480x320 -f image2 ' + '"' + thumbnail_path + '"'
-	ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -frames:v 1 -s 480x320 ' + '"' + thumbnail_path + '"'
+	ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -frames:v 1 -s 640x360 ' + '"' + thumbnail_path + '"'
 	puts "*** Extract Thumbnail from Video *** \n" + ffmpeg_command
 	system(ffmpeg_command)
 end
@@ -255,9 +292,10 @@ def foreground_extraction (remake_id, scene_id)
 
 	puts "Running foreground extraction for scene " + scene_id.to_s + " for remkae " + remake_id.to_s
 
-	# Updating the DB that the process has started
-	remake["footages"][scene_id - 1]["status"] = FootageStatus::Processing
-	result = remakes.update({_id: remake_id}, remake)
+	# Updating the status of this footage to Processing
+	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
+	puts "Footage status updated to Processing (2) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	#puts "DB Result: " + result.to_s
 
 	# Creating a new directory for the foreground extraction
 	foreground_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "/"
@@ -306,15 +344,39 @@ def foreground_extraction (remake_id, scene_id)
 	processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
 	upload_to_s3 File.new(output_with_audio_path), processed_video_s3_key, :private
 
-	# Updating the DB
-	remake["footages"][scene_id - 1]["status"] = FootageStatus::Ready
-	remake["footages"][scene_id - 1][:processed] = output_with_audio_path		
-	result = remakes.update({_id: remake_id}, remake)	
-	puts 'DB update: footage ' + scene_id.to_s + ' for remake ' + remake_id.to_s + ' status changed to Ready'
+	#remake["footages"][scene_id - 1][:processed] = output_with_audio_path
+
+	# Updating the status of this footage to Ready
+	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
+	puts "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	#puts "DB Result: " + result.to_s
 
 	# Deleting the folder after everything was updated successfully
 	#FileUtils.remove_dir(foreground_folder)
 end
+
+get '/test/db/update/:remake_id' do
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+
+	# Fetching the remake
+	remakes = settings.db.collection("Remakes")
+	remake = remakes.find_one(remake_id)
+
+	for footage in remake["footages"] do
+		Thread.new(footage, remake_id){ |my_footage, my_remake_id|
+			#puts "Footage number " + my_footage["scene_id"].to_s + " For Remake " + my_remake_id.to_s
+			sleep_for = rand(5..10)
+			puts "Remake " + remake_id.to_s + " Footage number " + my_footage["scene_id"].to_s + ": Sleeping for " + sleep_for.to_s + " seconds..."
+			sleep sleep_for
+			puts "Remake " + remake_id.to_s + " Footage number " + my_footage["scene_id"].to_s + ": Good Morning!"
+		}
+
+		#puts "Footage number " + footage["scene_id"].to_s
+	end
+
+	puts "Hiiiiiiiiiiiiiiiiiii"
+end
+
 
 =begin
 # Doing the foreground extraction of the video (params: remake id, scene id)
@@ -379,6 +441,21 @@ post '/foreground' do
 end
 =end
 
+
+def is_remake_ready (remake_id)
+	remake = settings.db.collection("Remakes").find_one(remake_id)
+	is_ready = true
+
+	for footage in remake["footages"] do
+		if footage["status"] != FootageStatus::Ready 
+			is_ready = false;
+		end
+	end
+
+	return is_ready
+end
+
+
 def render_video (remake_id)
 
 	# Fetching the remake and story for this remake
@@ -389,8 +466,7 @@ def render_video (remake_id)
 	puts "Starting the rendering of remake " + remake_id.to_s
 
 	# Updating the DB that the process has started
-	remake["status"] = RemakeStatus::Rendering
-	result = remakes.update({_id: remake_id}, remake)
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Rendering}})
 
 	# copying all videos to after project (downloading them from s3)
 	for scene in story["after_effects"]["scenes"] do
@@ -421,11 +497,7 @@ def render_video (remake_id)
 	s3_object_thumbnail = upload_to_s3 File.new(thumbnail_path), thumbnail_s3_key, :public_read
 
 	# Updating the DB that the movie is ready
-	remake["status"] = RemakeStatus::Done
-	remake[:video] = s3_object_video.public_url.to_s
-	remake["thumbnail"] = s3_object_thumbnail.public_url.to_s	
-	result = remakes.update({_id: remake_id}, remake)
-
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: s3_object_video.public_url.to_s, thumbnail: s3_object_thumbnail.public_url.to_s}})
 	puts "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + s3_object_video.public_url.to_s
 
 end
@@ -435,10 +507,61 @@ post '/render' do
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
 
 	Thread.new{
-		render_video remake_id
+		# Waiting until this remake is ready for rendering (or there is a timout)
+		is_ready = is_remake_ready remake_id 
+		sleep_for = 180
+		sleep_duration = 3
+		while ! is_ready && sleep_for > 0 do
+			puts "Waiting for remake " + remake_id.to_s + " to be ready"
+			sleep sleep_duration
+			sleep_for -= sleep_duration
+			is_ready = is_remake_ready remake_id
+		end
+
+		if is_ready then
+			render_video remake_id
+		else
+			puts "Timeout on the rendering of remake <" + remake_id.to_s + "> - updating DB"
+			remakes = settings.db.collection("Remakes")
+			remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Timeout}})
+			puts "DB update result: " + result.to_s
+		end
 	}
 end
 
+get '/test/remake/ready/wait/:remake_id' do
+
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+	
+	Thread.new{
+		sleep_for = 30
+		sleep_duration = 3
+		is_ready = is_remake_ready remake_id 
+
+		while ! is_ready && sleep_for > 0 do
+			puts "Going to sleep..."
+			sleep sleep_duration
+			sleep_for -= sleep_duration
+			is_ready = is_remake_ready remake_id 		
+		end
+
+		if is_ready then
+			puts "ready!!!"
+		else
+			puts "was never ready!!!"
+		end
+
+		puts "sleep left = " + sleep_for.to_s
+	}
+end
+
+
+get '/test/remake/ready/:remake_id' do
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+
+	result = is_remake_ready remake_id
+	puts result
+end
 
 get '/test/remake/delete' do
 	# input
@@ -486,7 +609,7 @@ post '/test/s3/upload' do
 end
 
 get '/test/footage' do
-	form = '<form action="/test/footage" method="post" enctype="multipart/form-data"> <input type="file" accept="video/*" name="file"> <input type="submit" value="Upload!"> </form>'
+	form = '<form action="/test/footage" method="post" enctype="multipart/form-data"> <input type="file" accept="video/*" name="file"> Remake ID: <input type="text" name="remake_id"> Scene ID: <input type="text" name="scene_id"> <input type="submit" value="Upload!"> </form>'
 	erb form
 end
 
@@ -494,12 +617,50 @@ post '/test/footage' do
 	#input
 	#source = "C:/Users/Administrator/AppData/Local/Temp/2/RackMultipart20140107-3512-1fpalb1"
 
-	file = params[:file][:tempfile]
-	file_path = file.path
-	remake_id = BSON::ObjectId.from_string("52d68511db25450da4000001")
-	scene_id = 1
+	#file = params[:file][:tempfile]
+	#file_path = file.path
+	#remake_id = BSON::ObjectId.from_string("52d68511db25450da4000001")
+	#scene_id = 1
 
-	new_footage file, remake_id, scene_id
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+	scene_id = params[:scene_id].to_i
+
+	#remakes = settings.db.collection("Remakes")
+	#x = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
+	#puts x
+
+	# Fetching the remake for this footage
+	remakes = settings.db.collection("Remakes")
+
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::InProgress, video: "Video", thumbnail: "Thumbnail"}})
+
+
+	# Updating the DB
+	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Uploaded}})
+	puts 'DB update: footage ' + scene_id.to_s + ' for remake ' + remake_id.to_s + ' status changed to Ready'
+	#puts "DB Result: " + result.to_s
+
+
+	Thread.new{
+
+		sleep_for = rand(30..60)
+		puts "Remake " + remake_id.to_s + " Footage number " + scene_id.to_s + ": Sleeping for " + sleep_for.to_s + " seconds..."
+		sleep sleep_for
+		puts "Remake " + remake_id.to_s + " Footage number " + scene_id.to_s + ": Going to update the DB...!"
+
+		# Running the foreground extraction algorithm
+		# foreground_extraction remake_id, scene_id
+		#remake["footages"][scene_id - 1]["status"] = FootageStatus::Ready
+		#remake["footages"][scene_id - 1][:processed] = output_with_audio_path		
+		result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
+		puts 'DB update: footage ' + scene_id.to_s + ' for remake ' + remake_id.to_s + ' status changed to Ready'
+		#puts "DB Result: " + result.to_s
+
+	}
+
+
+
+	#new_footage file, remake_id, scene_id
 
 =begin
 	puts "Uploading footage for scene " + scene_id.to_s + " of remake " + remake_id.to_s
@@ -558,7 +719,7 @@ end
 
 get '/test/render' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52d82fa7db254516a0000001")
+	remake_id = BSON::ObjectId.from_string("52df6fb2db254507d0000014")
 
 	Thread.new{
 		render_video remake_id
