@@ -49,6 +49,7 @@ module RemakeStatus
   Rendering = 2
   Done = 3
   Timeout = 4
+  Deleted = 5
 end
 
 module FootageStatus
@@ -135,9 +136,15 @@ delete '/remake/:remake_id' do
 	# input
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
 
-	logger.info "Deleting remake " + remake_id.to_s
+	logger.info "Deleting (marking as deleted) remake " + remake_id.to_s
 
-	settings.db.collection("Remakes").remove({_id: remake_id})
+	# Updating the DB that this remake is marked as deleted
+	remakes = settings.db.collection("Remakes")
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Deleted}})
+	#settings.db.collection("Remakes").remove({_id: remake_id})
+	
+	# Returning the updated remake
+	remake = remakes.find_one(remake_id).to_json
 end
 
 # Returns a given remake id
@@ -473,6 +480,8 @@ post '/render' do
 			logger.debug "DB update result: " + result.to_s
 		end
 	}
+
+	remake = settings.db.collection("Remakes").find_one(remake_id).to_json
 end
 
 get '/test/remake/ready/wait/:remake_id' do
@@ -511,9 +520,15 @@ end
 
 get '/test/remake/delete' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52d81869db25450c14000002")
+	remake_id = BSON::ObjectId.from_string("52e175f3db2545022400000e")
 
-	settings.db.collection("Remakes").remove({_id: remake_id})
+
+	logger.info "Deleting (marking as deleted) remake " + remake_id.to_s
+
+	# Updating the DB that this remake is marked as deleted
+	remakes = settings.db.collection("Remakes")
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Deleted}})
+	remake = remakes.find_one(remake_id)
 end
 
 get '/test/s3/download' do
