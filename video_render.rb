@@ -17,7 +17,7 @@ configure do
 	set :aerenderPath, "C:/Program Files/Adobe/Adobe After Effects CS6/Support Files/aerender.exe"
 	set :outputFolder, "C:/Users/Administrator/Documents/AE Output/"
 	set :ffmpeg_path, "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
-	set :algo_path, "C:/Development/Algo/v-14-01-05/UniformMattingCA.exe"
+	set :algo_path, "C:/Development/Algo/v-14-01-19/UniformMattingCA.exe"
 	set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
 
 	# AWS Connection
@@ -165,7 +165,8 @@ get '/remakes/user/:user_id' do
 
 	logger.info "Getting remakes for user " + user_id
 
-	remakes_docs = settings.db.collection("Remakes").find({user_id: user_id});
+	# Returning all the remakes of the given user and those with status inProgress, Rendering, Done and Timeout
+	remakes_docs = settings.db.collection("Remakes").find({user_id: "nir@homage.it", status: {"$in" => [RemakeStatus::InProgress, RemakeStatus::Rendering, RemakeStatus::Done, RemakeStatus::Timeout]}});
 
 	remakes_json_array = Array.new
 	for remake_doc in remakes_docs do
@@ -256,7 +257,7 @@ post '/footage' do
 	new_footage remake_id, scene_id
 
 	# Returning the remake after the DB update
-	remake = remakes.find_one(remake_id).to_json
+	remake = settings.db.collection("Remakes").find_one(remake_id).to_json
 end
 
 def new_footage (remake_id, scene_id)
@@ -454,8 +455,8 @@ post '/render' do
 	Thread.new{
 		# Waiting until this remake is ready for rendering (or there is a timout)
 		is_ready = is_remake_ready remake_id 
-		sleep_for = 180
-		sleep_duration = 3
+		sleep_for = 900
+		sleep_duration = 5
 		while ! is_ready && sleep_for > 0 do
 			logger.info "Waiting for remake " + remake_id.to_s + " to be ready"
 			sleep sleep_duration
@@ -551,9 +552,15 @@ get '/test/render' do
 end
 
 get '/test/foreground' do
+	form = '<form action="/test/foreground" method="post" enctype="multipart/form-data"> Remake ID: <input type="text" name="remake_id"> Scene ID: <input type="text" name="scene_id"> <input type="submit" value="Upload!"> </form>'
+	erb form
+end
+
+
+post '/test/foreground' do
 	# input
-	remake_id = BSON::ObjectId.from_string("52d826d4db254516d8000001")
-	scene_id = 1
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+	scene_id = params[:scene_id].to_i
 
 	Thread.new{
 		foreground_extraction remake_id, scene_id
