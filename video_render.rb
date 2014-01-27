@@ -173,7 +173,7 @@ get '/remakes/user/:user_id' do
 	logger.info "Getting remakes for user " + user_id
 
 	# Returning all the remakes of the given user and those with status inProgress, Rendering, Done and Timeout
-	remakes_docs = settings.db.collection("Remakes").find({user_id: "nir@homage.it", status: {"$in" => [RemakeStatus::InProgress, RemakeStatus::Rendering, RemakeStatus::Done, RemakeStatus::Timeout]}});
+	remakes_docs = settings.db.collection("Remakes").find({user_id: user_id, status: {"$in" => [RemakeStatus::InProgress, RemakeStatus::Rendering, RemakeStatus::Done, RemakeStatus::Timeout]}});
 
 	remakes_json_array = Array.new
 	for remake_doc in remakes_docs do
