@@ -75,6 +75,37 @@ get '/stories' do
 	# stories = JSON[stories_docs]
 end
 
+get '/test/user' do
+	form = '<form action="/user" method="post" enctype="multipart/form-data"> e-mail: <input type="text" name="email"> <input type="submit" value="Create User"> </form>'
+	erb form
+end
+
+post '/user' do
+	# input
+	email = params[:email]
+	
+	logger.info "Creating a new user with email <" + email + ">"
+
+	users = settings.db.collection("Users")
+
+	# Check if this email already exists
+	user = users.find_one({_id: email})
+
+	if user then
+		# user if this email already exists
+		logger.info "User already exists with id <" + email + ">. Returnig the existing user"
+	else
+		# Creating a new user
+		user = {_id: email};
+		user_id = users.save(user)
+		logger.info "New user saved in the DB with user_id <" + user_id.to_s + ">"
+	end
+
+	# Returning the user
+	result = user.to_json
+end
+
+
 # Creating a new remake (params are: story_id, user_id)
 post '/remake' do
 	# input
@@ -483,6 +514,7 @@ post '/render' do
 
 	remake = settings.db.collection("Remakes").find_one(remake_id).to_json
 end
+
 
 get '/test/remake/ready/wait/:remake_id' do
 
