@@ -105,7 +105,6 @@ post '/user' do
 	result = user.to_json
 end
 
-
 # Creating a new remake (params are: story_id, user_id)
 post '/remake' do
 	# input
@@ -122,7 +121,7 @@ post '/remake' do
 	s3_video = s3_folder + story["name"] + "_" + remake_id.to_s + ".mp4"
 	s3_thumbnail = s3_folder + story["name"] + "_" + remake_id.to_s + ".jpg"
 
-	remake = {_id: remake_id, story_id: story_id, user_id: user_id, status: RemakeStatus::New, 
+	remake = {_id: remake_id, story_id: story_id, user_id: user_id, created_at: Time.now ,status: RemakeStatus::New, 
 		thumbnail: story["thumbnail"], video_s3_key: s3_video, thumbnail_s3_key: s3_thumbnail}
 
 	# Creating the footages place holder based on the scenes of the story
