@@ -17,7 +17,7 @@ configure do
 	set :aerenderPath, "C:/Program Files/Adobe/Adobe After Effects CS6/Support Files/aerender.exe"
 	set :outputFolder, "C:/Users/Administrator/Documents/AE Output/"
 	set :ffmpeg_path, "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
-	set :algo_path, "C:/Development/Algo/v-14-01-19/UniformMattingCA.exe"
+	set :algo_path, "C:/Development/Algo/v-14-01-26/UniformMattingCA.exe"
 	set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
 
 	# AWS Connection
@@ -62,7 +62,7 @@ end
 # Get all stories
 get '/stories' do
 	stories_collection = settings.db.collection("Stories")
-	stories_docs = stories_collection.find({ }, {fields: {after_effects: 0}}).sort({order_id: 1})
+	stories_docs = stories_collection.find({active: true}, {fields: {after_effects: 0}}).sort({order_id: 1})
 
 	stories_json_array = Array.new
 	for story_doc in stories_docs do
@@ -76,27 +76,27 @@ get '/stories' do
 end
 
 get '/test/user' do
-	form = '<form action="/user" method="post" enctype="multipart/form-data"> e-mail: <input type="text" name="email"> <input type="submit" value="Create User"> </form>'
+	form = '<form action="/user" method="post" enctype="multipart/form-data"> e-mail: <input type="text" name="user_id"> <input type="submit" value="Create User"> </form>'
 	erb form
 end
 
 post '/user' do
 	# input
-	email = params[:email]
+	user_id_email = params[:user_id]
 	
-	logger.info "Creating a new user with email <" + email + ">"
+	logger.info "Creating a new user with email <" + user_id_email + ">"
 
 	users = settings.db.collection("Users")
 
 	# Check if this email already exists
-	user = users.find_one({_id: email})
+	user = users.find_one({_id: user_id_email})
 
 	if user then
 		# user if this email already exists
-		logger.info "User already exists with id <" + email + ">. Returnig the existing user"
+		logger.info "User already exists with id <" + user_id_email + ">. Returnig the existing user"
 	else
 		# Creating a new user
-		user = {_id: email};
+		user = {_id: user_id_email, is_public: true};
 		user_id = users.save(user)
 		logger.info "New user saved in the DB with user_id <" + user_id.to_s + ">"
 	end
@@ -314,7 +314,7 @@ def new_footage (remake_id, scene_id)
 
 	Thread.new{
 		# Running the foreground extraction algorithm
-		#foreground_extraction remake_id, scene_id
+		foreground_extraction remake_id, scene_id
 	}
 end
 
@@ -360,6 +360,77 @@ def extract_thumbnail (video_path, time, thumbnail_path)
 end
 
 def foreground_extraction (remake_id, scene_id)
+	# Fetching the remake for this footage
+	remakes = settings.db.collection("Remakes")
+	remake = remakes.find_one(remake_id)
+	story = settings.db.collection("Stories").find_one(remake["story_id"])
+
+	logger.info "Running foreground extraction for scene " + scene_id.to_s + " for remkae " + remake_id.to_s
+
+	# Updating the status of this footage to Processing
+	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
+	logger.info "Footage status updated to Processing (2) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	#logger.debug "DB Result: " + result.to_s
+
+	# Creating a new directory for the foreground extraction
+	foreground_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "/"
+	FileUtils.mkdir foreground_folder
+
+	# Downloading the raw video from s3
+	raw_video_s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
+	raw_video_file_name = File.basename(raw_video_s3_key)
+	raw_video_file_path = foreground_folder + raw_video_file_name	
+	download_from_s3 raw_video_s3_key, raw_video_file_path
+
+	# Checking if foreground extraction is needed
+	if story["scenes"][scene_id - 1]["silhouette"] then
+		# images from the video
+		images_fodler = foreground_folder + "Images/"
+		ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
+		logger.info "*** Video to images *** \n" + ffmpeg_command
+		FileUtils.mkdir images_fodler
+		system(ffmpeg_command)
+
+		# foreground extraction algorithm
+		contour_path = story["scenes"][scene_id - 1]["contour"]
+		roi_path = story["scenes"][scene_id - 1]["ebox"]
+		first_image_path = images_fodler + "Image-0001.jpg"
+		output_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground" + ".avi"
+		algo_command = settings.algo_path + ' "' + contour_path + '" "' + roi_path + '" "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
+		logger.info "*** Running Algo *** \n" + algo_command 
+		system(algo_command)
+
+		# Converting the large avi file to a small mp4 file
+		mp4_path = output_path.chomp(File.extname(output_path)) + ".mp4"
+		convert_command = settings.ffmpeg_path + ' -i "' + output_path + '" -vcodec mpeg4 -b:v 1200k "' + mp4_path + '"'
+		puts "*** avi to mp4 *** \n" + convert_command
+		system(convert_command)
+
+		# Adding audio to video
+		output_with_audio_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground_Audio" + ".mp4"
+		add_audio_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -i "' + mp4_path + '" -c copy -map 0:1 -map 1:0 "' + output_with_audio_path + '"'
+		logger.info "*** audio to video *** \n" + add_audio_command
+		system(add_audio_command)
+	else
+		# If no foreground extraction is required then uploading the same file that was downloaded
+		output_with_audio_path = raw_video_file_path
+	end
+
+	# upload to s3
+	processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
+	upload_to_s3 File.new(output_with_audio_path), processed_video_s3_key, :private
+
+	# Updating the status of this footage to Ready
+	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
+	logger.info "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	#logger.debug "DB Result: " + result.to_s
+
+	# Deleting the folder after everything was updated successfully
+	#FileUtils.remove_dir(foreground_folder)
+end
+
+# The OLD foreground that creates a sequence of png images, and then creates a video with alpha from it
+def foreground_extraction_png (remake_id, scene_id)
 	# Fetching the remake for this footage
 	remakes = settings.db.collection("Remakes")
 	remake = remakes.find_one(remake_id)
