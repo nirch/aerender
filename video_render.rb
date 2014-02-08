@@ -17,7 +17,7 @@ configure do
 	set :aerenderPath, "C:/Program Files/Adobe/Adobe After Effects CS6/Support Files/aerender.exe"
 	set :outputFolder, "C:/Users/Administrator/Documents/AE Output/"
 	set :ffmpeg_path, "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
-	set :algo_path, "C:/Development/Algo/v-14-01-26/UniformMattingCA.exe"
+	set :algo_path, "C:/Development/Algo/v-14-02-06/UniformMattingCA.exe"
 	set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
 
 	# AWS Connection
