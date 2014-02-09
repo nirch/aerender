@@ -1,0 +1,14 @@
+<head>
+<title>Homage</title>
+<script type="text/javascript" src="//cdn.sublimevideo.net/js/w5ui0013.js"></script>
+</head>
+
+<h1>
+	<%= @remake["user_id"].split("@")[0].slice(0,1).capitalize + @remake["user_id"].split("@")[0].slice(1..-1) %>'s remake for <%= @story["name"]%>
+
+</h1>
+
+
+<video id="0" class="sublime" poster=<%= @remake["thumbnail"]%> width="640" height="360" data-uid="0" preload="none">
+  <source src=<%= @remake["video"]%> data-quality="hd" />
+</video>

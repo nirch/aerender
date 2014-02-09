@@ -265,6 +265,15 @@ def download_from_s3 (s3_key, local_path)
   	puts "File downloaded successfully to: " + local_path
 end
 
+def delete_from_s3 (s3_key)
+	s3 = AWS::S3.new
+	bucket = s3.buckets['homageapp']
+
+	puts "Downloading file from S3 with key " + s3_key
+	s3_object = bucket.objects[s3_key]
+end
+
+
 get '/test/text' do
 	form = '<form action="/text" method="post" enctype="multipart/form-data"> Remake ID: <input type="text" name="remake_id"> Text ID: <input type="text" name="text_id"> Text: <input type="text" name="text"> <input type="submit" value="Text!"> </form>'
 	erb form
@@ -721,4 +730,19 @@ get '/download/:filename' do
 	downloadPath = settings.outputFolder + params[:filename]
 	puts "download file path: #{downloadPath}"
 	send_file downloadPath #, :type => 'video/mp4', :disposition => 'inline'
+end
+
+get '/play/:remake_id' do
+	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+
+	remakes = settings.db.collection("Remakes")
+	@remake = remakes.find_one(remake_id)
+
+	stories = settings.db.collection("Stories")
+	@story = stories.find_one(@remake["story_id"])
+
+	headers \
+    	"X-Frame-Options"   => "ALLOW-FROM http://homage.it/"
+
+	erb :video
 end
