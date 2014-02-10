@@ -19,6 +19,7 @@ configure do
 	set :ffmpeg_path, "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
 	set :algo_path, "C:/Development/Algo/v-14-02-06/UniformMattingCA.exe"
 	set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
+	set :rendering_semaphore, Mutex.new
 
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
@@ -27,14 +28,16 @@ configure do
 	# Logger
 
   	# Logging the routes both to console (STDOUT/STDERR) and filw
-	logger_file = File.new("#{settings.root}/log/#{settings.environment}.log", 'a+')
- 	logger_file.sync = true
-  	use Rack::CommonLogger, logger_file
- 	set :logging, Logger::DEBUG
+	#logger_file = File.new("#{settings.root}/log/#{settings.environment}.log", 'a+')
+ 	#logger_file.sync = true
+  	#use Rack::CommonLogger, logger_file
+ 	#set :logging, Logger::DEBUG
 
   	# Logging everything to file (instead of console)
- 	#$stdout.reopen(log_file)
-  	#$stderr.reopen(log_file)
+  	log_file = File.new("sinatra.log", "a+")
+  	log_file.sync = true
+ 	$stdout.reopen(log_file)
+  	$stderr.reopen(log_file)
 end
 
 # Logging logger to file (instead of console)
@@ -560,9 +563,25 @@ def render_video (remake_id)
 	s3_object_video = upload_to_s3 File.new(output_path), video_s3_key, :public_read
 	s3_object_thumbnail = upload_to_s3 File.new(thumbnail_path), thumbnail_s3_key, :public_read
 
+	share_link = "http://play.homage.it/" + remake_id.to_s
+
 	# Updating the DB that the movie is ready
-	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: s3_object_video.public_url.to_s, thumbnail: s3_object_thumbnail.public_url.to_s}})
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: s3_object_video.public_url.to_s, thumbnail: s3_object_thumbnail.public_url.to_s, share_link: share_link}})
 	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + s3_object_video.public_url.to_s
+end
+
+get '/test/mutex' do
+	thread_id = BSON::ObjectId.new
+
+	Thread.new{
+		puts "New thread: " + thread_id.to_s
+
+		settings.rendering_semaphore.synchronize{
+			puts "Thread " + thread_id.to_s + "Going to Sleep..."
+			sleep 8
+			puts "Thread " + thread_id.to_s + "Good Morning!"			
+		}
+	}
 end
 
 post '/render' do
@@ -582,7 +601,10 @@ post '/render' do
 		end
 
 		if is_ready then
-			render_video remake_id
+			# Synchronizing the actual rendering (because we cannot have more than 1 rendering in parallel)
+			settings.rendering_semaphore.synchronize{
+				render_video remake_id
+			}
 		else
 			logger.warn "Timeout on the rendering of remake <" + remake_id.to_s + "> - updating DB"
 			remakes = settings.db.collection("Remakes")
@@ -745,4 +767,15 @@ get '/play/:remake_id' do
     	"X-Frame-Options"   => "ALLOW-FROM http://homage.it/"
 
 	erb :video
+end
+
+get '/db/add_share' do
+	remakes = settings.db.collection("Remakes")
+	done_remakes = remakes.find({status: 3})
+
+	for done_remake in done_remakes do
+		share_link = "http://play.homage.it/" + done_remake["_id"].to_s
+		result = remakes.update({_id: done_remake["_id"]}, {"$set" => {share_link: share_link}})
+		puts result
+	end
 end
