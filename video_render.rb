@@ -19,7 +19,9 @@ configure do
 	set :ffmpeg_path, "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
 	set :algo_path, "C:/Development/Algo/v-14-02-06/UniformMattingCA.exe"
 	set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
+	set :roi_path, "C:/Development/Algo/Full.ebox"
 	set :rendering_semaphore, Mutex.new
+
 
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
@@ -404,7 +406,8 @@ def foreground_extraction (remake_id, scene_id)
 
 		# foreground extraction algorithm
 		contour_path = story["scenes"][scene_id - 1]["contour"]
-		roi_path = story["scenes"][scene_id - 1]["ebox"]
+		#roi_path = story["scenes"][scene_id - 1]["ebox"]
+		roi_path = settings.roi_path
 		first_image_path = images_fodler + "Image-0001.jpg"
 		output_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground" + ".avi"
 		algo_command = settings.algo_path + ' "' + contour_path + '" "' + roi_path + '" "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
@@ -473,7 +476,8 @@ def foreground_extraction_png (remake_id, scene_id)
 
 	# foreground extraction algorithm
 	contour_path = story["scenes"][scene_id - 1]["contour"]
-	roi_path = story["scenes"][scene_id - 1]["ebox"]
+	#roi_path = story["scenes"][scene_id - 1]["ebox"]
+	roi_path = settings.roi_path
 	first_image_path = images_fodler + "Image-0001.jpg"
 	output_folder = File.dirname(raw_video_file_path) + "/" + File.basename(raw_video_file_path, ".*") + "_Foreground/"
 	output_path = output_folder + "Output"
