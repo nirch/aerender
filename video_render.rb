@@ -270,14 +270,13 @@ def download_from_s3 (s3_key, local_path)
   	puts "File downloaded successfully to: " + local_path
 end
 
-def delete_from_s3 (s3_key)
+def delete_from_s3 (s3_key_prefix)
 	s3 = AWS::S3.new
 	bucket = s3.buckets['homageapp']
 
-	puts "Downloading file from S3 with key " + s3_key
-	s3_object = bucket.objects[s3_key]
+	puts "Deleting object from S3 with prefix " + s3_key_prefix
+	bucket.objects.with_prefix(s3_key_prefix).delete_all
 end
-
 
 get '/test/text' do
 	form = '<form action="/text" method="post" enctype="multipart/form-data"> Remake ID: <input type="text" name="remake_id"> Text ID: <input type="text" name="text_id"> Text: <input type="text" name="text"> <input type="submit" value="Text!"> </form>'
@@ -758,6 +757,13 @@ get '/download/:filename' do
 	send_file downloadPath #, :type => 'video/mp4', :disposition => 'inline'
 end
 
+get '/play/intro' do
+	headers \
+		"X-Frame-Options"   => "ALLOW-FROM http://play.homage.it/"
+
+	erb :intro
+end
+
 get '/play/:remake_id' do
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
 
@@ -768,18 +774,7 @@ get '/play/:remake_id' do
 	@story = stories.find_one(@remake["story_id"])
 
 	headers \
-    	"X-Frame-Options"   => "ALLOW-FROM http://homage.it/"
+		"X-Frame-Options"   => "ALLOW-FROM http://play.homage.it/"
 
 	erb :video
-end
-
-get '/db/add_share' do
-	remakes = settings.db.collection("Remakes")
-	done_remakes = remakes.find({status: 3})
-
-	for done_remake in done_remakes do
-		share_link = "http://play.homage.it/" + done_remake["_id"].to_s
-		result = remakes.update({_id: done_remake["_id"]}, {"$set" => {share_link: share_link}})
-		puts result
-	end
 end
