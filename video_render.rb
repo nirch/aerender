@@ -20,6 +20,8 @@ configure do
 	set :algo_path, "C:/Development/Algo/v-14-02-06/UniformMattingCA.exe"
 	set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
 	set :roi_path, "C:/Development/Algo/Full.ebox"
+	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
+	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
 	set :rendering_semaphore, Mutex.new
 
 
@@ -33,7 +35,7 @@ configure do
 	#logger_file = File.new("#{settings.root}/log/#{settings.environment}.log", 'a+')
  	#logger_file.sync = true
   	#use Rack::CommonLogger, logger_file
- 	#set :logging, Logger::DEBUG
+ 	set :logging, Logger::DEBUG
 
   	# Logging everything to file (instead of console)
   	log_file = File.new("sinatra.log", "a+")
@@ -239,14 +241,14 @@ get '/remakes/story/:story_id' do
 	remakes = "[" + remakes_json_array.join(",") + "]"
 end
 
-def upload_to_s3 (file, s3_key, acl)
+def upload_to_s3 (file, s3_key, acl, content_type=nil)
 
 	s3 = AWS::S3.new
 	bucket = s3.buckets['homageapp']
 	s3_object = bucket.objects[s3_key]
 
 	puts 'Uploading the file <' + file.path + '> to S3 path <' + s3_object.key + '>'
-	s3_object.write(file, :acl => acl)
+	s3_object.write(file, {:acl => acl, :content_type => content_type})
 	puts "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
 
 	return s3_object
@@ -563,14 +565,16 @@ def render_video (remake_id)
 	thumbnail_s3_key = remake["thumbnail_s3_key"]
 
 	# Uploading the movie and thumbnail to S3
-	s3_object_video = upload_to_s3 File.new(output_path), video_s3_key, :public_read
+	s3_object_video = upload_to_s3 File.new(output_path), video_s3_key, :public_read, 'video/mp4'
 	s3_object_thumbnail = upload_to_s3 File.new(thumbnail_path), thumbnail_s3_key, :public_read
 
 	share_link = "http://play.homage.it/" + remake_id.to_s
+	video_cdn_url = s3_object_video.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
+	thumbnail_cdn_url = s3_object_thumbnail.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
 
 	# Updating the DB that the movie is ready
-	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: s3_object_video.public_url.to_s, thumbnail: s3_object_thumbnail.public_url.to_s, share_link: share_link}})
-	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + s3_object_video.public_url.to_s
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link}})
+	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 end
 
 get '/test/mutex' do
@@ -605,6 +609,11 @@ post '/render' do
 
 		if is_ready then
 			# Synchronizing the actual rendering (because we cannot have more than 1 rendering in parallel)
+			if settings.rendering_semaphore.locked? then
+				logger.info "Rendering for remake " + remake_id.to_s + " waiting for other threads to finish rendering"
+			else
+				logger.debug "Rendering is going to start for remake " + remake_id.to_s
+			end	
 			settings.rendering_semaphore.synchronize{
 				render_video remake_id
 			}
@@ -686,7 +695,7 @@ post '/test/s3/upload' do
 	file_path = file.path
 	s3_key = 'Temp/' + File.basename(file_path)
 
-	s3_object = upload_to_s3 file, s3_key, :private
+	s3_object = upload_to_s3 file, s3_key, :private, 'video/mp4'
 
 	puts s3_object.public_url
 end
