@@ -538,7 +538,7 @@ def render_video (remake_id)
 	logger.info "Starting the rendering of remake " + remake_id.to_s
 
 	# Updating the DB that the process has started
-	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Rendering}})
+	#remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Rendering}})
 
 	# copying all videos to after project (downloading them from s3)
 	for scene in story["after_effects"]["scenes"] do
@@ -595,6 +595,10 @@ post '/render' do
 	# input
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
 
+	# Updating the DB that the process has started
+	remakes = settings.db.collection("Remakes")
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Rendering}})
+
 	Thread.new{
 		# Waiting until this remake is ready for rendering (or there is a timout)
 		is_ready = is_remake_ready remake_id 
@@ -619,13 +623,12 @@ post '/render' do
 			}
 		else
 			logger.warn "Timeout on the rendering of remake <" + remake_id.to_s + "> - updating DB"
-			remakes = settings.db.collection("Remakes")
 			remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Timeout}})
 			logger.debug "DB update result: " + result.to_s
 		end
 	}
 
-	remake = settings.db.collection("Remakes").find_one(remake_id).to_json
+	remake = remakes.find_one(remake_id).to_json
 end
 
 
@@ -772,6 +775,15 @@ get '/play/intro' do
 
 	erb :intro
 end
+
+#get '/play/DemoDay' do
+get %r{^/play/demoday/?$}i do
+	headers \
+		"X-Frame-Options"   => "ALLOW-FROM http://play.homage.it/"
+
+	@remakes = settings.db.collection("Remakes").find({demo_day: true})
+	erb :demoday
+end 
 
 get '/play/:remake_id' do
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
