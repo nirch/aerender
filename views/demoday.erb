@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<head>
+	<title>Homage - DemoDay</title>
+
+	<link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+	<link rel="stylesheet" href="http://blueimp.github.io/Gallery/css/blueimp-gallery.min.css">
+	<link rel="stylesheet" href="/css/bootstrap-image-gallery.min.css">
+
+	<style type="text/css">
+		html, body {
+			height: 100%;
+		}
+		body {
+			background-color:#f8f8f8;
+		}
+		nav {
+			background-color: #ff7d5f !important;
+		}
+		#links a img {
+			margin: 3px 1px;
+		}
+	</style>
+</head>
+
+<body>
+	<nav class="navbar navbar-default" role="navigation">
+	  <div class="container">
+		    <!-- Brand and toggle get grouped for better mobile display -->
+		    <div class="navbar-header">
+		      <a class="navbar-brand" href="http://www.homage.it"> <img src="https://s3.amazonaws.com/homageapp/Intro/Homage_Logo.png" height="24" width="117"> </a>
+		    </div>
+	    </div>
+	</nav>
+
+	<div class="container"> 
+		<h1>
+			Demo Day
+		</h1>
+		<!-- The Bootstrap Image Gallery lightbox, should be a child element of the document body -->
+		<div id="blueimp-gallery" class="blueimp-gallery">
+		    <!-- The container for the modal slides -->
+		    <div class="slides"></div>
+		    <!-- Controls for the borderless lightbox -->
+		    <h3 class="title"></h3>
+		    <a class="prev">‹</a>
+		    <a class="next">›</a>
+		    <a class="close">×</a>
+		    <a class="play-pause"></a>
+		    <ol class="indicator"></ol>
+		    <!-- The modal dialog, which will be used to wrap the lightbox content -->
+		    <div class="modal fade">
+		        <div class="modal-dialog">
+		            <div class="modal-content">
+		                <div class="modal-header">
+		                    <button type="button" class="close" aria-hidden="true">&times;</button>
+		                    <h4 class="modal-title"></h4>
+		                </div>
+		                <div class="modal-body next"></div>
+		                <div class="modal-footer">
+		                    <button type="button" class="btn btn-default pull-left prev">
+		                        <i class="glyphicon glyphicon-chevron-left"></i>
+		                        Previous
+		                    </button>
+		                    <button type="button" class="btn btn-primary next">
+		                        Next
+		                        <i class="glyphicon glyphicon-chevron-right"></i>
+		                    </button>
+		                </div>
+		            </div>
+		        </div>
+		    </div>
+		</div>
+
+		<div id="links">
+			<% for remake in @remakes do %>
+			    <a href=<%= remake["video"] %> title="<%= remake["title"] %>" type="video/mp4" data-poster=<%= remake["thumbnail"] %> data-gallery>
+			        <img src=<%= remake["thumbnail"] %> width=320 height=180 alt="<%= remake["title"] %>">
+			    </a>				
+			<% end %>
+
+<!-- 		    <a href="http://d293iqusjtyr94.cloudfront.net/Remakes/5300c3dec5c06a0c80000001/Dive%20School_5300c3dec5c06a0c80000001.mp4" title="Nir Channes" type="video/mp4" data-poster="http://d293iqusjtyr94.cloudfront.net/Remakes/5300c3dec5c06a0c80000001/Dive%20School_5300c3dec5c06a0c80000001.jpg" data-gallery>
+		        <img src="https://homageapp.s3.amazonaws.com/Remakes/5300c3dec5c06a0c80000001/Dive%20School_5300c3dec5c06a0c80000001.jpg" width=320 height=180 alt="Jonny Sacks">
+		    </a>
+		    <a href="http://d293iqusjtyr94.cloudfront.net/Remakes/530108cec5c06a0904000001/Dive%20School_530108cec5c06a0904000001.mp4" title="Ziv Channes" type="video/mp4" data-poster="http://d293iqusjtyr94.cloudfront.net/Remakes/530108cec5c06a0904000001/Dive%20School_530108cec5c06a0904000001.jpg" data-gallery>
+		        <img src="http://d293iqusjtyr94.cloudfront.net/Remakes/530108cec5c06a0904000001/Dive%20School_530108cec5c06a0904000001.jpg" width=320 height=180 alt="Ziv Channes">
+		    </a>
+		    <a href="http://d293iqusjtyr94.cloudfront.net/Remakes/5300c590c5c06a0c80000003/Dive%20School_5300c590c5c06a0c80000003.mp4" title="Tomer Harry" type="video/mp4" data-poster="http://d293iqusjtyr94.cloudfront.net/Remakes/5300c590c5c06a0c80000003/Dive%20School_5300c590c5c06a0c80000003.jpg" data-gallery>
+		        <img src="http://d293iqusjtyr94.cloudfront.net/Remakes/5300c590c5c06a0c80000003/Dive%20School_5300c590c5c06a0c80000003.jpg" width=320 height=180 alt="Tomer Harry">
+		    </a>
+		    <a href="http://d293iqusjtyr94.cloudfront.net/Remakes/530082a1c5c06a03ac000002/The%20Oscars_530082a1c5c06a03ac000002.mp4" title="Jonny Sacks" type="video/mp4" data-poster="http://d293iqusjtyr94.cloudfront.net/Remakes/530082a1c5c06a03ac000002/The%20Oscars_530082a1c5c06a03ac000002.jpg" data-gallery>
+		        <img src="http://d293iqusjtyr94.cloudfront.net/Remakes/530082a1c5c06a03ac000002/The%20Oscars_530082a1c5c06a03ac000002.jpg" width=320 height=180 alt="Jonny Sacks">
+		    </a>
+ -->
+		</div>
+	</div>
+
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script src="http://netdna.bootstrapcdn.com/bootstrap/3.0.2/js/bootstrap.min.js"></script>
+	<script src="http://blueimp.github.io/Gallery/js/jquery.blueimp-gallery.min.js"></script>
+	<script src="/js/bootstrap-image-gallery.min.js"></script>
+	<!-- <script src="/js/blueimp-gallery-video.js"></script> -->
+
+</body>
