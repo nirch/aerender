@@ -368,7 +368,7 @@ def new_footage_prototype (video, remake_id, scene_id)
 end
 
 def extract_thumbnail (video_path, time, thumbnail_path)
-	ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -frames:v 1 -s 640x360 ' + '"' + thumbnail_path + '"'
+	ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -frames:v 1 -s 640x360 -y ' + '"' + thumbnail_path + '"'
 	logger.info "*** Extract Thumbnail from Video *** \n" + ffmpeg_command
 	system(ffmpeg_command)
 end
