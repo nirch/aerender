@@ -14,9 +14,9 @@ configure do
 
 	# Setting folders param
 	set :aeProjectsFolder, "C:/Users/Administrator/Documents/AE Projects/"
-	set :aerenderPath, "C:/Program Files/Adobe/Adobe After Effects CS6/Support Files/aerender.exe"
+	set :aerenderPath, "C:/Program Files/Adobe/Adobe After Effects CC/Support Files/aerender.exe"
 	set :outputFolder, "C:/Users/Administrator/Documents/AE Output/"
-	set :ffmpeg_path, "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
+	set :ffmpeg_path, "C:/Development/FFmpeg/bin/ffmpeg.exe"
 	set :algo_path, "C:/Development/Algo/v-14-02-06/UniformMattingCA.exe"
 	set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
 	set :roi_path, "C:/Development/Algo/Full.ebox"
