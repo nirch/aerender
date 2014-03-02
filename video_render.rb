@@ -814,5 +814,5 @@ get '/play/:remake_id' do
 end
 
 get '/test/env' do
-	x = ENV['RACK_ENV']
+	logger.info "Environment: " + ENV['RACK_ENV'].to_s
 end
