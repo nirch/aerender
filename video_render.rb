@@ -47,6 +47,7 @@ configure :production do
 	set :db, db_connection.db()
 
 	set :logging, Logger::INFO
+	puts "PRODUCTION!!!"
 end
 
 configure :test do
@@ -55,6 +56,7 @@ configure :test do
 	set :db, db_connection.db()
 
 	set :logging, Logger::DEBUG
+	puts "TEST!!!"
 end	
 
 # Logging logger to file (instead of console)
