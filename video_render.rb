@@ -8,9 +8,7 @@ require 'open-uri'
 require 'aws-sdk'
 
 configure do
-	# Setting db connection param
-	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
-	set :db, db_connection.db()
+	# Global configuration (regardless of the environment)
 
 	# Setting folders param
 	set :aeProjectsFolder, "C:/Users/Administrator/Documents/AE Projects/"
@@ -35,7 +33,6 @@ configure do
 	#logger_file = File.new("#{settings.root}/log/#{settings.environment}.log", 'a+')
  	#logger_file.sync = true
   	#use Rack::CommonLogger, logger_file
- 	set :logging, Logger::DEBUG
 
   	# Logging everything to file (instead of console)
   	log_file = File.new("sinatra.log", "a+")
@@ -43,6 +40,22 @@ configure do
  	$stdout.reopen(log_file)
   	$stderr.reopen(log_file)
 end
+
+configure :production do
+	# Production DB connection
+	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
+	set :db, db_connection.db()
+
+	set :logging, Logger::INFO
+end
+
+configure :test do
+	# Test DB connection
+	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
+	set :db, db_connection.db()
+
+	set :logging, Logger::DEBUG
+end	
 
 # Logging logger to file (instead of console)
 #before do
@@ -798,4 +811,8 @@ get '/play/:remake_id' do
 		"X-Frame-Options"   => "ALLOW-FROM http://play.homage.it/"
 
 	erb :video
+end
+
+get '/test/env' do
+	x = ENV['RACK_ENV']
 end
