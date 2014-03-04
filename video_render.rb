@@ -417,7 +417,7 @@ def foreground_extraction (remake_id, scene_id)
 		images_fodler = foreground_folder + "Images/"
 		ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
 		logger.info "*** Video to images *** \n" + ffmpeg_command
-		unless File.directory(images_fodler)
+		unless File.directory?(images_fodler)
 			FileUtils.mkdir images_fodler
 		end
 		system(ffmpeg_command)
