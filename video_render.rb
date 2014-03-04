@@ -260,9 +260,9 @@ def upload_to_s3 (file, s3_key, acl, content_type=nil)
 	bucket = s3.buckets['homageapp']
 	s3_object = bucket.objects[s3_key]
 
-	puts 'Uploading the file <' + file.path + '> to S3 path <' + s3_object.key + '>'
+	logger.info 'Uploading the file <' + file.path + '> to S3 path <' + s3_object.key + '>'
 	s3_object.write(file, {:acl => acl, :content_type => content_type})
-	puts "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
+	logger.info "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
 
 	return s3_object
 
@@ -273,7 +273,7 @@ def download_from_s3 (s3_key, local_path)
 	s3 = AWS::S3.new
 	bucket = s3.buckets['homageapp']
 
-	puts "Downloading file from S3 with key " + s3_key
+	logger.info "Downloading file from S3 with key " + s3_key
 	s3_object = bucket.objects[s3_key]
 
 	File.open(local_path, 'wb') do |file|
@@ -282,7 +282,7 @@ def download_from_s3 (s3_key, local_path)
     	end
     end
 
-  	puts "File downloaded successfully to: " + local_path
+  	logger.info "File downloaded successfully to: " + local_path
 end
 
 def delete_from_s3 (s3_key_prefix)
@@ -401,7 +401,9 @@ def foreground_extraction (remake_id, scene_id)
 
 	# Creating a new directory for the foreground extraction
 	foreground_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "/"
-	FileUtils.mkdir foreground_folder
+	unless File.directory?(foreground_folder)
+		FileUtils.mkdir foreground_folder
+	end
 
 	# Downloading the raw video from s3
 	raw_video_s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
@@ -415,7 +417,9 @@ def foreground_extraction (remake_id, scene_id)
 		images_fodler = foreground_folder + "Images/"
 		ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
 		logger.info "*** Video to images *** \n" + ffmpeg_command
-		FileUtils.mkdir images_fodler
+		unless File.directory(images_fodler)
+			FileUtils.mkdir images_fodler
+		end
 		system(ffmpeg_command)
 
 		# foreground extraction algorithm
