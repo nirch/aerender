@@ -434,13 +434,13 @@ def foreground_extraction (remake_id, scene_id)
 
 		# Converting the large avi file to a small mp4 file
 		mp4_path = output_path.chomp(File.extname(output_path)) + ".mp4"
-		convert_command = settings.ffmpeg_path + ' -i "' + output_path + '" -vcodec mpeg4 -b:v 1200k "' + mp4_path + '"'
+		convert_command = settings.ffmpeg_path + ' -i "' + output_path + '" -vcodec mpeg4 -b:v 1200k -y "' + mp4_path + '"'
 		puts "*** avi to mp4 *** \n" + convert_command
 		system(convert_command)
 
 		# Adding audio to video
 		output_with_audio_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground_Audio" + ".mp4"
-		add_audio_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -i "' + mp4_path + '" -c copy -map 0:1 -map 1:0 "' + output_with_audio_path + '"'
+		add_audio_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -i "' + mp4_path + '" -c copy -map 0:1 -map 1:0 -y "' + output_with_audio_path + '"'
 		logger.info "*** audio to video *** \n" + add_audio_command
 		system(add_audio_command)
 	else
