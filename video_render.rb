@@ -6,6 +6,7 @@ require 'json'
 require 'fileutils'
 require 'open-uri'
 require 'aws-sdk'
+require 'houston'
 
 configure do
 	# Global configuration (regardless of the environment)
@@ -54,6 +55,9 @@ configure :test do
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
 
+	APN = Houston::Client.development
+	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_dev.pem", __FILE__))
+
 	set :logging, Logger::DEBUG
 end	
 
@@ -78,6 +82,12 @@ module FootageStatus
   Processing = 2
   Ready = 3
 end
+
+module PushNotifications
+	MovieReady = 0
+	MovieTimout = 1
+end
+
 
 # Get all stories
 get '/stories' do
@@ -546,7 +556,6 @@ def is_remake_ready (remake_id)
 end
 
 def render_video (remake_id)
-
 	# Fetching the remake and story for this remake
 	remakes = settings.db.collection("Remakes")
 	remake = remakes.find_one(remake_id)
@@ -592,7 +601,59 @@ def render_video (remake_id)
 	# Updating the DB that the movie is ready
 	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link}})
 	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
+
+	send_movie_ready_push_notification(story, remake)
 end
+
+def send_movie_ready_push_notification(story, remake)
+	user_id = remake["user_id"]
+	alert = "Your " + story["name"] + " movie is ready!"
+	custom_data = {type: PushNotifications::MovieReady, remake_id: remake["_id"].to_s}
+
+	send_push_notification_to_user(user_id, alert, custom_data)
+end
+
+def send_movie_timeout_push_notification(remake)
+	user_id = remake["user_id"]
+	alert = "Failed to create your movie, open the application and try again"
+	custom_data = {type: PushNotifications::MovieTimout, remake_id: remake["_id"].to_s}
+
+	send_push_notification_to_user(user_id, alert, custom_data)
+end
+
+def send_push_notification_to_user(user_id, alert, custom_data)
+	logger.debug "send_push_notification_to_user: " + user_id.to_s + "; " + alert + "; " + custom_data.to_s
+
+	# If this is the old user id (not an ObjectId, then returning)
+	if !BSON::ObjectId.legal?(user_id.to_s) then
+		logger.debug "not legal"
+		return
+	end
+
+	token_used = Set.new
+
+	# Getting the user of this remake and pushing a notification to all his devices
+	users = settings.db.collection("Users")
+	user = users.find_one(user_id)
+	for device in user["devices"] do
+		if device.has_key?("push_token")
+			token = device["push_token"]
+			if !token_used.include?(token) then
+				send_push_notification(token, alert, custom_data)
+				token_used.add(token)
+			end
+		end
+	end
+end
+
+def send_push_notification(device_token, alert, custom_data)
+	logger.info "Sending push notification to device token: " + device_token.to_s + " with alert: " + alert + " with custom_data: " + custom_data.to_s
+	notification = Houston::Notification.new(device: device_token)
+	notification.alert = alert
+	notification.custom_data = custom_data
+	APN.push(notification)	
+end
+
 
 get '/test/mutex' do
 	thread_id = BSON::ObjectId.new
@@ -642,6 +703,8 @@ post '/render' do
 			logger.warn "Timeout on the rendering of remake <" + remake_id.to_s + "> - updating DB"
 			remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Timeout}})
 			logger.debug "DB update result: " + result.to_s
+			remake = remakes.find_one(remake_id)
+			send_movie_timeout_push_notification(remake)
 		end
 	}
 
@@ -819,4 +882,14 @@ end
 
 get '/test/env' do
 	logger.info "Environment: " + ENV['RACK_ENV'].to_s
+end
+
+get '/test/push' do
+	user_id = BSON::ObjectId.from_string("53306186f52d5c6a14000006")
+	alert = "How many notifications?"
+	custom_data = {type: 0, remake_id: "kjfdkjf333kj3kj3kj3"}
+	
+	send_push_notification_to_user(user_id, alert, custom_data)
+
+	"done"
 end
