@@ -608,7 +608,7 @@ end
 def send_movie_ready_push_notification(story, remake)
 	user_id = remake["user_id"]
 	alert = "Your " + story["name"] + " movie is ready!"
-	custom_data = {type: PushNotifications::MovieReady, remake_id: remake["_id"].to_s}
+	custom_data = {type: PushNotifications::MovieReady, remake_id: remake["_id"].to_s, story_id: story["_id"].to_s}
 
 	send_push_notification_to_user(user_id, alert, custom_data)
 end
@@ -616,7 +616,7 @@ end
 def send_movie_timeout_push_notification(remake)
 	user_id = remake["user_id"]
 	alert = "Failed to create your movie, open the application and try again"
-	custom_data = {type: PushNotifications::MovieTimout, remake_id: remake["_id"].to_s}
+	custom_data = {type: PushNotifications::MovieTimout, remake_id: remake["_id"].to_s, story_id: remake["story_id"].to_s}
 
 	send_push_notification_to_user(user_id, alert, custom_data)
 end
