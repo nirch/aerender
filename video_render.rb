@@ -47,6 +47,11 @@ configure :production do
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
 	set :db, db_connection.db()
 
+	# Push notification certificate
+	APN = Houston::Client.production
+	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_prod.pem", __FILE__))
+	APN.passphrase = "homage"
+
 	set :logging, Logger::INFO
 end
 
@@ -55,6 +60,7 @@ configure :test do
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
 
+	# Push notification certificate
 	APN = Houston::Client.development
 	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_dev.pem", __FILE__))
 
@@ -702,7 +708,7 @@ post '/render' do
 		else
 			logger.warn "Timeout on the rendering of remake <" + remake_id.to_s + "> - updating DB"
 			remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Timeout}})
-			logger.debug "DB update result: " + result.to_s
+			logger.info "DB update result: " + result.to_s
 			remake = remakes.find_one(remake_id)
 			send_movie_timeout_push_notification(remake)
 		end
