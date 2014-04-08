@@ -52,6 +52,8 @@ configure :production do
 	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_prod.pem", __FILE__))
 	APN.passphrase = "homage"
 
+	set :share_link_prefix, "http://play.homage.it/"
+
 	set :logging, Logger::INFO
 end
 
@@ -63,6 +65,8 @@ configure :test do
 	# Push notification certificate
 	APN = Houston::Client.development
 	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_dev.pem", __FILE__))
+
+	set :share_link_prefix, "http://homage-server-app-test-nuskncpdiu.elasticbeanstalk.com/play/"
 
 	set :logging, Logger::DEBUG
 end	
@@ -600,7 +604,7 @@ def render_video (remake_id)
 	s3_object_video = upload_to_s3 File.new(output_path), video_s3_key, :public_read, 'video/mp4'
 	s3_object_thumbnail = upload_to_s3 File.new(thumbnail_path), thumbnail_s3_key, :public_read
 
-	share_link = "http://play.homage.it/" + remake_id.to_s
+	share_link = settings.share_link_prefix + remake_id.to_s
 	video_cdn_url = s3_object_video.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
 	thumbnail_cdn_url = s3_object_thumbnail.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
 
