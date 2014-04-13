@@ -402,7 +402,7 @@ def new_footage_prototype (video, remake_id, scene_id)
 end
 
 def extract_thumbnail (video_path, time, thumbnail_path)
-	ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -frames:v 1 -s 640x360 -y ' + '"' + thumbnail_path + '"'
+	ffmpeg_command = settings.ffmpeg_path + ' -ss ' + time.to_s + ' -i "' + video_path + '" -frames:v 1 -vf crop=640:360 -y ' + '"' + thumbnail_path + '"'
 	logger.info "*** Extract Thumbnail from Video *** \n" + ffmpeg_command
 	system(ffmpeg_command)
 end
@@ -846,9 +846,9 @@ post '/test/foreground' do
 end
 
 get '/test/thumbnail' do
-	video_path = "C:/Users/Administrator/Documents/AE Output/Test_52d6a0dcdb254505fc000001.mp4"
-	time = 1.2
-	thumbnail_path = "C:/Users/Administrator/Documents/AE Output/Test__52d6a0dcdb254505fc000001_10.jpg"
+	video_path = "/Users/tomer/Desktop/Delete/orientation/IMG_0570-rotated.MOV"
+	time = 0.5
+	thumbnail_path = "/Users/tomer/Desktop/Delete/orientation/IMG_0570-tumbnail.jpg"
 
 	extract_thumbnail video_path, time, thumbnail_path
 end
