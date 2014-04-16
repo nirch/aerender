@@ -643,6 +643,22 @@ def is_remake_ready (remake_id)
 	return is_ready
 end
 
+def update_story_remakes_count(story_id)
+	remakes = settings.db.collection("Remakes")
+	stories = settings.db.collection("Stories")
+
+	# Getting the number of remakes for this story
+	story_remakes = remakes.count({query: {story_id: story_id, status: RemakeStatus::Done}})
+	stories.update({_id: story_id}, {"$set" => {"remakes_num" => story_remakes}})
+	logger.info "Updated story id <" + story_id.to_s + "> number of remakes to " + story_remakes.to_s
+end
+
+get '/test/update/remakes/:story_id' do
+	story_id = BSON::ObjectId.from_string(params[:story_id])
+
+	update_story_remakes_count story_id
+end
+
 def render_video (remake_id)
 	# Fetching the remake and story for this remake
 	remakes = settings.db.collection("Remakes")
@@ -691,6 +707,8 @@ def render_video (remake_id)
 	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
 	send_movie_ready_push_notification(story, remake)
+
+	update_story_remakes_count(remake["story_id"])
 end
 
 def send_movie_ready_push_notification(story, remake)
