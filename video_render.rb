@@ -339,31 +339,81 @@ post '/footage' do
 	# input
 	remake_id = BSON::ObjectId.from_string(params[:remake_id])
 	scene_id = params[:scene_id].to_i
+	take_id = params[:take_id]
 
-	new_footage remake_id, scene_id
+	new_footage remake_id, scene_id, take_id
 
 	# Returning the remake after the DB update
 	remake = settings.db.collection("Remakes").find_one(remake_id).to_json
 end
 
-def new_footage (remake_id, scene_id)
-	logger.info "New footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s
+def is_latest_take(remake_id, scene_id, take_id)
+	remake = settings.db.collection("Remakes").find_one(remake_id)
+	db_take_id = remake["footages"][scene_id - 1]["take_id"]
+	if db_take_id then
+		if db_take_id == take_id then
+			return true
+		else
+			logger.info "Not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">. DB take_id <" + db_take_id + "> while given take_id <" + take_id + ">"
+			return false
+		end
+	else
+		# No take_id then assuiming this is the latest one
+		return true
+	end
+end
+
+get '/test/latest/take' do
+	remake_id = BSON::ObjectId.from_string("534e39bfbb1945affc000002")
+	remake_id_no_take_id = BSON::ObjectId.from_string("534e39c1bb1945affc000004")
+	scene_id = 1
+	correct_take_id = "vbf3332s"
+	wrong_take_id = "12345ddd"
+
+	if is_latest_take(remake_id, scene_id, correct_take_id) then
+		logger.info "Good Correct"
+	else
+		logger.info "Bad Correct"
+	end
+
+	if is_latest_take(remake_id, scene_id, wrong_take_id) then
+		logger.info "Bad Wrong"
+	else
+		logger.info "Good Wrong"
+	end
+
+	if is_latest_take(remake_id_no_take_id, scene_id, correct_take_id) then
+		logger.info "Good no take id"
+	else
+		logger.info "Bad no take id"
+	end
+	
+end
+
+def new_footage (remake_id, scene_id, take_id)
+	logger.info "New footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s + " with take_id " + take_id
 
 	# Fetching the remake for this footage
 	remakes = settings.db.collection("Remakes")
 
-	# Updating the status of this remake to in progress
-	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::InProgress}})
+	if is_latest_take(remake_id, scene_id, take_id) then
 
-	# Updating the status of this footage to uploaded
-	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Uploaded}})
-	#logger.debug "DB Result: " + result.to_s
-	logger.info "Footage status updated to Uploaded (1) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+		# Updating the status of this remake to in progress
+		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::InProgress}})
 
-	Thread.new{
-		# Running the foreground extraction algorithm
-		foreground_extraction remake_id, scene_id
-	}
+		# Updating the status of this footage to uploaded
+		result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Uploaded}})
+		#logger.debug "DB Result: " + result.to_s
+		logger.info "Footage status updated to Uploaded (1) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+
+		Thread.new{
+			# Running the foreground extraction algorithm
+			foreground_extraction remake_id, scene_id, take_id
+		}
+	else
+		# if this is not the latest take, ignoring the call
+		logger.info "Ignoring the request since this is not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	end
 end
 
 # Post a new footage (params are: uploaded file, remake id, scene id)
@@ -428,13 +478,13 @@ get '/test/orientation' do
 	logger.info rotated_video_path
 end
 
-def foreground_extraction (remake_id, scene_id)
+def foreground_extraction (remake_id, scene_id, take_id)
 	# Fetching the remake for this footage
 	remakes = settings.db.collection("Remakes")
 	remake = remakes.find_one(remake_id)
 	story = settings.db.collection("Stories").find_one(remake["story_id"])
 
-	logger.info "Running foreground extraction for scene " + scene_id.to_s + " for remkae " + remake_id.to_s
+	logger.info "Running foreground extraction for scene " + scene_id.to_s + " for remkae " + remake_id.to_s + " with take_id " + take_id
 
 	# Updating the status of this footage to Processing
 	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
@@ -497,8 +547,12 @@ def foreground_extraction (remake_id, scene_id)
 	upload_to_s3 File.new(output_with_audio_path), processed_video_s3_key, :private
 
 	# Updating the status of this footage to Ready
-	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
-	logger.info "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	if is_latest_take(remake_id, scene_id, take_id) then
+		result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
+		logger.info "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	else
+		logger.info "not updating the DB to status ready since this is not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+	end
 	#logger.debug "DB Result: " + result.to_s
 
 	# Deleting the folder after everything was updated successfully
