@@ -467,7 +467,7 @@ def handle_orientation (video_path)
 		# need to rotate the video
 		# ffmpeg -i input.mp4 -metadata:s:v rotate="0" -vf "hflip,vflip" -c:v libx264 -crf 23 -acodec copy output.mp4
 		rotated_video_path = File.dirname(video_path) + "/" + File.basename(video_path, ".*") + "-rotated" + File.extname(video_path)
-		rotate_command = settings.ffmpeg_path + ' -i "' + video_path + '" -metadata:s:v rotate="0" -vf "hflip,vflip" -c:v libx264 -crf 23 -acodec copy ' + rotated_video_path
+		rotate_command = settings.ffmpeg_path + ' -i "' + video_path + '" -metadata:s:v rotate="0" -vf "hflip,vflip" -c:v libx264 -crf 23 -acodec copy -y ' + rotated_video_path
 		logger.info "*** Rotating Video *** \n" + rotate_command
 		system(rotate_command)
 		return rotated_video_path
