@@ -705,9 +705,13 @@ def render_video (remake_id)
 	share_link = settings.share_link_prefix + remake_id.to_s
 	video_cdn_url = s3_object_video.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
 	thumbnail_cdn_url = s3_object_thumbnail.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
+	render_end = Time.now
+	if remake["render_start"] then
+		render_duration = render_end - remake["render_start"]
+	end
 
 	# Updating the DB that the movie is ready
-	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link}})
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration}})
 	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
 	send_movie_ready_push_notification(story, remake)
@@ -992,6 +996,9 @@ end
 
 get '/test/env' do
 	logger.info "Environment: " + ENV['RACK_ENV'].to_s
+end
+
+get '/health/check' do
 end
 
 get '/test/push' do
