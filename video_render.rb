@@ -533,7 +533,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		flip_switch = ""
 		if is_upside_down(raw_video_file_path) then
 			flip_switch = "-Flip"
-		else
+		end
 
 		# foreground extraction algorithm
 		contour_path = story["scenes"][scene_id - 1]["contour"]
