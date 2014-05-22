@@ -462,7 +462,9 @@ def extract_thumbnail (video_path, time, thumbnail_path)
 end
 
 def is_upside_down (video_path)
+	logger.debug "enter is_upside_down"
 	video_metadata = MiniExiftool.new(video_path)
+	logger.debug "after exiftool"
 	if video_metadata.Rotation == 180 then
 		return true
 	else
@@ -528,18 +530,22 @@ def foreground_extraction (remake_id, scene_id, take_id)
 			FileUtils.mkdir images_fodler
 		end
 		system(ffmpeg_command)
+		logger.debug "video to image ended"
 
 		# Assigning the flip switch if this video is upside down
 		flip_switch = ""
+		logger.debug "before is_upside_down method"
 		if is_upside_down(raw_video_file_path) then
 			flip_switch = "-Flip"
 		end
+		logger.debug "after is_upside_down"
 
 		# foreground extraction algorithm
 		contour_path = story["scenes"][scene_id - 1]["contour"]
 		first_image_path = images_fodler + "Image-0001.jpg"
 		output_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground" + ".avi"
-		algo_command = settings.algo_path + ' "' + settings.xml_path + '" "' + contour_path + '" ' + flip + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
+		logger.debug "before algo"
+		algo_command = settings.algo_path + ' "' + settings.params_path + '" "' + contour_path + '" ' + flip + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
 		logger.info "*** Running Algo *** \n" + algo_command 
 		system(algo_command)
 
