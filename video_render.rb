@@ -545,7 +545,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		first_image_path = images_fodler + "Image-0001.jpg"
 		output_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground" + ".avi"
 		logger.debug "before algo"
-		algo_command = settings.algo_path + ' "' + settings.params_path + '" "' + contour_path + '" ' + flip + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
+		algo_command = settings.algo_path + ' "' + settings.params_path + '" "' + contour_path + '" ' + flip_switch + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
 		logger.info "*** Running Algo *** \n" + algo_command 
 		system(algo_command)
 
