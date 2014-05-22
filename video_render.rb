@@ -15,17 +15,15 @@ configure do
 	# Setting folders param
 	set :aeProjectsFolder, "C:/Users/Administrator/Documents/AE Projects/"
 	set :aerenderPath, "C:/Program Files/Adobe/Adobe After Effects CC/Support Files/aerender.exe"
-	#set :outputFolder, "C:/Users/Administrator/Documents/AE Output/"
-	set :outputFolder, "Z:/Output/"
+	set :outputFolder, "Z:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
 	set :ffmpeg_path, "C:/Development/FFmpeg/bin/ffmpeg.exe"
-	set :algo_path, "C:/Development/Algo/v-14-04-29/UniformMattingCA.exe"
-	#set :remakes_folder, "C:/Users/Administrator/Documents/Remakes/"
-	set :remakes_folder, "Z:/Remakes/"
+	set :algo_path, "C:/Development/Algo/v-14-05-22/UniformMattingCA.exe"
+	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
 	set :roi_path, "C:/Development/Algo/Full.ebox"
 	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
 	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
 	set :rendering_semaphore, Mutex.new
-
+	set :params_path, "C:/Development/Algo/params.xml"
 
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
@@ -463,6 +461,15 @@ def extract_thumbnail (video_path, time, thumbnail_path)
 	system(ffmpeg_command)
 end
 
+def is_upside_down (video_path)
+	video_metadata = MiniExiftool.new(video_path)
+	if video_metadata.Rotation == 180 then
+		return true
+	else
+		return false
+	end	
+end
+
 def handle_orientation (video_path)
 	video_metadata = MiniExiftool.new(video_path)
 	if video_metadata.Rotation == 180 then
@@ -511,7 +518,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 
 	# Checking if foreground extraction is needed
 	if story["scenes"][scene_id - 1]["silhouette"] then
-		raw_video_file_path = handle_orientation(raw_video_file_path)
+		#raw_video_file_path = handle_orientation(raw_video_file_path)
 
 		# images from the video
 		images_fodler = foreground_folder + "Images/"
@@ -522,13 +529,17 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		end
 		system(ffmpeg_command)
 
+		# Assigning the flip switch if this video is upside down
+		flip_switch = ""
+		if is_upside_down(raw_video_file_path) then
+			flip_switch = "-Flip"
+		else
+
 		# foreground extraction algorithm
 		contour_path = story["scenes"][scene_id - 1]["contour"]
-		#roi_path = story["scenes"][scene_id - 1]["ebox"]
-		roi_path = settings.roi_path
 		first_image_path = images_fodler + "Image-0001.jpg"
 		output_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground" + ".avi"
-		algo_command = settings.algo_path + ' "' + contour_path + '" "' + roi_path + '" "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
+		algo_command = settings.algo_path + ' "' + settings.xml_path + '" "' + contour_path + '" ' + flip + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
 		logger.info "*** Running Algo *** \n" + algo_command 
 		system(algo_command)
 
