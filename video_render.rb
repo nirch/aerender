@@ -670,8 +670,15 @@ def update_story_remakes_count(story_id)
 	remakes = settings.db.collection("Remakes")
 	stories = settings.db.collection("Stories")
 
+	story = stories.find_one(story_id)
+
 	# Getting the number of remakes for this story
 	story_remakes = remakes.count({query: {story_id: story_id, status: RemakeStatus::Done}})
+	if story["story_480"] then
+		story_480_remakes = remakes.count({query: {story_id: story["story_480"], status: RemakeStatus::Done}})
+		story_remakes += story_480_remakes
+	end
+
 	stories.update({_id: story_id}, {"$set" => {"remakes_num" => story_remakes}})
 	logger.info "Updated story id <" + story_id.to_s + "> number of remakes to " + story_remakes.to_s
 end
