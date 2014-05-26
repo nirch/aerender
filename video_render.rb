@@ -519,7 +519,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 	download_from_s3 raw_video_s3_key, raw_video_file_path
 
 	# Checking if foreground extraction is needed
-	if story["scenes"][scene_id - 1]["silhouette"] then
+	if story["scenes"][scene_id - 1]["silhouette"] or story["scenes"][scene_id - 1]["silhouettes"] then
 		#raw_video_file_path = handle_orientation(raw_video_file_path)
 
 		# images from the video
@@ -541,7 +541,11 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		logger.debug "after is_upside_down"
 
 		# foreground extraction algorithm
-		contour_path = story["scenes"][scene_id - 1]["contour"]
+		if remake["resolution"] then
+			contour_path = story["scenes"][scene_id - 1]["contours"][remake["resolution"]]["contour"]
+		else
+			contour_path = story["scenes"][scene_id - 1]["contour"]
+		end
 		first_image_path = images_fodler + "Image-0001.jpg"
 		output_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground" + ".avi"
 		logger.debug "before algo"
@@ -614,7 +618,11 @@ def foreground_extraction_png (remake_id, scene_id)
 	system(ffmpeg_command)
 
 	# foreground extraction algorithm
-	contour_path = story["scenes"][scene_id - 1]["contour"]
+	if remake["resolution"] then
+		contour_path = story["scenes"][scene_id - 1]["contours"][remake["resolution"]]["contour"]
+	else
+		contour_path = story["scenes"][scene_id - 1]["contour"]
+	end
 	#roi_path = story["scenes"][scene_id - 1]["ebox"]
 	roi_path = settings.roi_path
 	first_image_path = images_fodler + "Image-0001.jpg"
@@ -697,17 +705,25 @@ def render_video (remake_id)
 
 	logger.info "Starting the rendering of remake " + remake_id.to_s
 
+	if remake["resolution"] then
+		story_folder = story["after_effects"][remake["resolution"]]["folder"]
+		story_project = story["after_effects"][remake["resolution"]]["project"]
+	else
+		story_folder = story["after_effects"]["folder"]
+		story_project = story["after_effects"]["project"]
+	end
+
 	# Updating the DB that the process has started
 	#remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Rendering}})
 
 	# copying all videos to after project (downloading them from s3)
 	for scene in story["after_effects"]["scenes"] do
 		processed_video_s3_key = remake["footages"][scene["id"] - 1]["processed_video_s3_key"]
-		destination = settings.aeProjectsFolder + story["after_effects"]["folder"] + "/(Footage)/" + scene["file"]
+		destination = settings.aeProjectsFolder + story_folder + "/(Footage)/" + scene["file"]
 		download_from_s3 processed_video_s3_key, destination
 	end
 
-	projectPath = settings.aeProjectsFolder + story["after_effects"]["folder"] + "/" + story["after_effects"]["project"]
+	projectPath = settings.aeProjectsFolder + story_folder + "/" + story_project
 	output_file_name = story["name"] + "_" + remake_id.to_s + ".mp4"
 	output_path = settings.outputFolder + output_file_name
 	aerenderCommandLine = '"' + settings.aerenderPath + '"' + ' -project "' + projectPath + '"' + ' -rqindex 1 -output "' + output_path + '"'
