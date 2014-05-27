@@ -807,6 +807,7 @@ def send_push_notification(device_token, alert, custom_data)
 	notification = Houston::Notification.new(device: device_token)
 	notification.alert = alert
 	notification.custom_data = custom_data
+	notification.sound = "default"
 	APN.push(notification)	
 end
 
