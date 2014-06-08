@@ -24,6 +24,7 @@ configure do
 	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
 	set :rendering_semaphore, Mutex.new
 	set :params_path, "C:/Development/Algo/params.xml"
+	set :cdn_folder, "Z:/CDN/"
 
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
@@ -310,6 +311,13 @@ def download_from_s3 (s3_key, local_path)
   	logger.info "File downloaded successfully to: " + local_path
 end
 
+def download_from_url (url, local_path)
+	File.open(local_path, 'wb') do |file|
+		file << open(url).read
+    end	
+end
+
+
 def delete_from_s3 (s3_key_prefix)
 	s3 = AWS::S3.new
 	bucket = s3.buckets['homageapp']
@@ -472,6 +480,15 @@ def is_upside_down (video_path)
 	end	
 end
 
+def has_audio_channel (video_path)
+	video_metadata = MiniExiftool.new(video_path)
+	if video_metadata.AudioChannels then
+		return true
+	else
+		return false
+	end
+end
+
 def handle_orientation (video_path)
 	video_metadata = MiniExiftool.new(video_path)
 	if video_metadata.Rotation == 180 then
@@ -524,7 +541,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 
 		# images from the video
 		images_fodler = foreground_folder + "Images/"
-		ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
+		ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -r 25 -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
 		logger.info "*** Video to images *** \n" + ffmpeg_command
 		unless File.directory?(images_fodler)
 			FileUtils.mkdir images_fodler
@@ -549,7 +566,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		first_image_path = images_fodler + "Image-0001.jpg"
 		output_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground" + ".avi"
 		logger.debug "before algo"
-		algo_command = settings.algo_path + ' "' + settings.params_path + '" "' + contour_path + '" ' + flip_switch + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
+		algo_command = settings.algo_path + ' -CA "' + settings.params_path + '" "' + contour_path + '" ' + flip_switch + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
 		logger.info "*** Running Algo *** \n" + algo_command 
 		system(algo_command)
 
@@ -559,11 +576,15 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		puts "*** avi to mp4 *** \n" + convert_command
 		system(convert_command)
 
-		# Adding audio to video
-		output_with_audio_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground_Audio" + ".mp4"
-		add_audio_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -i "' + mp4_path + '" -c copy -map 0:1 -map 1:0 -y "' + output_with_audio_path + '"'
-		logger.info "*** audio to video *** \n" + add_audio_command
-		system(add_audio_command)
+		# Adding audio to video (if the raw video has an audio channel)
+		if has_audio_channel(raw_video_file_path) then
+			output_with_audio_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground_Audio" + ".mp4"
+			add_audio_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -i "' + mp4_path + '" -c copy -map 0:1 -map 1:0 -y "' + output_with_audio_path + '"'
+			logger.info "*** audio to video *** \n" + add_audio_command
+			system(add_audio_command)
+		else
+			output_with_audio_path = raw_video_file_path
+		end
 	else
 		# If no foreground extraction is required then uploading the same file that was downloaded
 		output_with_audio_path = raw_video_file_path
@@ -612,7 +633,7 @@ def foreground_extraction_png (remake_id, scene_id)
 
 	# images from the video
 	images_fodler = foreground_folder + "Images/"
-	ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
+	ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -r 25 -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
 	logger.info "*** Video to images *** \n" + ffmpeg_command
 	FileUtils.mkdir images_fodler
 	system(ffmpeg_command)
@@ -628,7 +649,7 @@ def foreground_extraction_png (remake_id, scene_id)
 	first_image_path = images_fodler + "Image-0001.jpg"
 	output_folder = File.dirname(raw_video_file_path) + "/" + File.basename(raw_video_file_path, ".*") + "_Foreground/"
 	output_path = output_folder + "Output"
-	algo_command = settings.algo_path + ' "' + contour_path + '" "' + roi_path + '" "' + first_image_path + '" -png "' + output_path + '"'
+	algo_command = settings.algo_path + ' -CA "' + contour_path + '" "' + roi_path + '" "' + first_image_path + '" -png "' + output_path + '"'
 	logger.info "*** Running Algo *** \n" + algo_command 
 	FileUtils.mkdir output_folder
 	system(algo_command)
@@ -757,6 +778,12 @@ def render_video (remake_id)
 	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
 	send_movie_ready_push_notification(story, remake)
+
+	cdn_local_path = settings.cdn_folder + output_file_name
+	logger.info "downloading the just created video to update CDN cache"
+	download_from_url(video_cdn_url, cdn_local_path)
+	logger.info "Now deleting it the file that was downloaded for cache"
+	FileUtils.remove_file(cdn_local_path)
 
 	update_story_remakes_count(remake["story_id"])
 end
