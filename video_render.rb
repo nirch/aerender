@@ -583,7 +583,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 			logger.info "*** audio to video *** \n" + add_audio_command
 			system(add_audio_command)
 		else
-			output_with_audio_path = raw_video_file_path
+			output_with_audio_path = mp4_path
 		end
 	else
 		# If no foreground extraction is required then uploading the same file that was downloaded
