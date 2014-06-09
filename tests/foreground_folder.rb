@@ -35,7 +35,8 @@ Dir.foreach(folder) do |file|
 		# Creating images from the video
 		images_fodler = folder + "Images/"
 		FileUtils.mkdir images_fodler
-		ffmpeg_command = ffmpeg_path + ' -i "' + folder + file + '" -r 25 -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
+		video_path = folder + file
+		ffmpeg_command = ffmpeg_path + ' -i "' + video_path + '" -r 25 -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
 		puts "*** Video to images *** \n" + ffmpeg_command
 		system(ffmpeg_command)
 
