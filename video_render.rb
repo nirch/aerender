@@ -17,7 +17,7 @@ configure do
 	set :aerenderPath, "C:/Program Files/Adobe/Adobe After Effects CC/Support Files/aerender.exe"
 	set :outputFolder, "Z:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
 	set :ffmpeg_path, "C:/Development/FFmpeg/bin/ffmpeg.exe"
-	set :algo_path, "C:/Development/Algo/v-14-05-22/UniformMattingCA.exe"
+	set :algo_path, "C:/Development/Algo/v-14-06-08/UniformMattingCA.exe"
 	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
 	set :roi_path, "C:/Development/Algo/Full.ebox"
 	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
