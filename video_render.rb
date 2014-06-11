@@ -17,7 +17,7 @@ configure do
 	set :aerenderPath, "C:/Program Files/Adobe/Adobe After Effects CC/Support Files/aerender.exe"
 	set :outputFolder, "Z:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
 	set :ffmpeg_path, "C:/Development/FFmpeg/bin/ffmpeg.exe"
-	set :algo_path, "C:/Development/Algo/v-14-05-22/UniformMattingCA.exe"
+	set :algo_path, "C:/Development/Algo/v-14-06-08/UniformMattingCA.exe"
 	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
 	set :roi_path, "C:/Development/Algo/Full.ebox"
 	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
@@ -584,7 +584,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 			logger.info "*** audio to video *** \n" + add_audio_command
 			system(add_audio_command)
 		else
-			output_with_audio_path = raw_video_file_path
+			output_with_audio_path = mp4_path
 		end
 	else
 		# If no foreground extraction is required then uploading the same file that was downloaded
