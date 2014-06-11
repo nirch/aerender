@@ -469,10 +469,7 @@ def extract_thumbnail (video_path, time, thumbnail_path)
 	system(ffmpeg_command)
 end
 
-def is_upside_down (video_path)
-	logger.debug "enter is_upside_down"
-	video_metadata = MiniExiftool.new(video_path)
-	logger.debug "after exiftool"
+def is_upside_down (video_metadata)
 	if video_metadata.Rotation == 180 then
 		return true
 	else
@@ -480,13 +477,16 @@ def is_upside_down (video_path)
 	end	
 end
 
-def has_audio_channel (video_path)
-	video_metadata = MiniExiftool.new(video_path)
+def has_audio_channel (video_metadata)
 	if video_metadata.AudioChannels then
 		return true
 	else
 		return false
 	end
+end
+
+def get_frame_rate (video_metadata)
+	return video_metadata.VideoFrameRate.round.to_s
 end
 
 def handle_orientation (video_path)
@@ -539,9 +539,12 @@ def foreground_extraction (remake_id, scene_id, take_id)
 	if story["scenes"][scene_id - 1]["silhouette"] or story["scenes"][scene_id - 1]["silhouettes"] then
 		#raw_video_file_path = handle_orientation(raw_video_file_path)
 
+		video_metadata = MiniExiftool.new(raw_video_file_path)
+		frame_rate = get_frame_rate(video_metadata)
+
 		# images from the video
 		images_fodler = foreground_folder + "Images/"
-		ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -r 25 -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
+		ffmpeg_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -r ' + frame_rate ' -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
 		logger.info "*** Video to images *** \n" + ffmpeg_command
 		unless File.directory?(images_fodler)
 			FileUtils.mkdir images_fodler
@@ -551,11 +554,9 @@ def foreground_extraction (remake_id, scene_id, take_id)
 
 		# Assigning the flip switch if this video is upside down
 		flip_switch = ""
-		logger.debug "before is_upside_down method"
-		if is_upside_down(raw_video_file_path) then
+		if is_upside_down(video_metadata) then
 			flip_switch = "-Flip"
 		end
-		logger.debug "after is_upside_down"
 
 		# foreground extraction algorithm
 		if remake["resolution"] then
@@ -566,7 +567,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		first_image_path = images_fodler + "Image-0001.jpg"
 		output_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground" + ".avi"
 		logger.debug "before algo"
-		algo_command = settings.algo_path + ' -CA "' + settings.params_path + '" "' + contour_path + '" ' + flip_switch + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
+		algo_command = settings.algo_path + ' -CA "' + settings.params_path + '" "' + contour_path + '" ' + flip_switch + ' "' + first_image_path + '" -avic -r' + frame_rate + ' -mp4 "' + output_path + '"'
 		logger.info "*** Running Algo *** \n" + algo_command 
 		system(algo_command)
 
@@ -577,7 +578,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		system(convert_command)
 
 		# Adding audio to video (if the raw video has an audio channel)
-		if has_audio_channel(raw_video_file_path) then
+		if has_audio_channel(video_metadata) then
 			output_with_audio_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-Foreground_Audio" + ".mp4"
 			add_audio_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -i "' + mp4_path + '" -c copy -map 0:1 -map 1:0 -y "' + output_with_audio_path + '"'
 			logger.info "*** audio to video *** \n" + add_audio_command
