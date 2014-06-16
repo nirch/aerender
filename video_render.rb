@@ -280,14 +280,16 @@ get '/remakes/story/:story_id' do
 	remakes = "[" + remakes_json_array.join(",") + "]"
 end
 
-def upload_to_s3 (file, s3_key, acl, content_type=nil)
+def upload_to_s3 (file_path, s3_key, acl, content_type=nil)
 
 	s3 = AWS::S3.new
 	bucket = s3.buckets['homageapp']
 	s3_object = bucket.objects[s3_key]
 
-	logger.info 'Uploading the file <' + file.path + '> to S3 path <' + s3_object.key + '>'
+	logger.info 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
+	file = File.new(file_path)
 	s3_object.write(file, {:acl => acl, :content_type => content_type})
+	file.close
 	logger.info "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
 
 	return s3_object
@@ -306,6 +308,7 @@ def download_from_s3 (s3_key, local_path)
   		s3_object.read do |chunk|
     		file.write(chunk)
     	end
+    	file.close
     end
 
   	logger.info "File downloaded successfully to: " + local_path
@@ -315,6 +318,16 @@ def download_from_url (url, local_path)
 	File.open(local_path, 'wb') do |file|
 		file << open(url).read
     end	
+end
+
+get '/test/url/download' do
+	url = 'http://s3.amazonaws.com/homageapp/Contours/360/american+shot+360.ctr'
+	#local_path = settings.remakes_folder + File.basename(s3_key)
+	local_path = "/Users/tomer/Desktop/Delete/Remakes/" + "test.txt" #File.basename(url)
+
+	puts local_path
+
+	download_from_url url, local_path
 end
 
 
@@ -447,7 +460,7 @@ def new_footage_prototype (video, remake_id, scene_id)
 
 	# Uploading to S3
 	s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
-	upload_to_s3 video, s3_key, :private
+	upload_to_s3 video.path, s3_key, :private
 
 	# Updating the status of this remake to in progress
 	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::InProgress}})
@@ -539,7 +552,9 @@ def foreground_extraction (remake_id, scene_id, take_id)
 	if story["scenes"][scene_id - 1]["silhouette"] or story["scenes"][scene_id - 1]["silhouettes"] then
 		#raw_video_file_path = handle_orientation(raw_video_file_path)
 
+		logger.info "beofre exiftool for " + raw_video_file_path
 		video_metadata = MiniExiftool.new(raw_video_file_path)
+		logger.info "after exiftool for " + raw_video_file_path
 		frame_rate = get_frame_rate(video_metadata)
 
 		# images from the video
@@ -593,7 +608,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 
 	# upload to s3
 	processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
-	upload_to_s3 File.new(output_with_audio_path), processed_video_s3_key, :private
+	upload_to_s3 output_with_audio_path, processed_video_s3_key, :private
 
 	# Updating the status of this footage to Ready
 	if is_latest_take(remake_id, scene_id, take_id) then
@@ -670,7 +685,7 @@ def foreground_extraction_png (remake_id, scene_id)
 
 	# upload to s3
 	processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
-	upload_to_s3 File.new(output_with_audio_path), processed_video_s3_key, :private
+	upload_to_s3 output_with_audio_path, processed_video_s3_key, :private
 
 	#remake["footages"][scene_id - 1][:processed] = output_with_audio_path
 
@@ -763,8 +778,8 @@ def render_video (remake_id)
 	thumbnail_s3_key = remake["thumbnail_s3_key"]
 
 	# Uploading the movie and thumbnail to S3
-	s3_object_video = upload_to_s3 File.new(output_path), video_s3_key, :public_read, 'video/mp4'
-	s3_object_thumbnail = upload_to_s3 File.new(thumbnail_path), thumbnail_s3_key, :public_read
+	s3_object_video = upload_to_s3 output_path, video_s3_key, :public_read, 'video/mp4'
+	s3_object_thumbnail = upload_to_s3 thumbnail_path, thumbnail_s3_key, :public_read
 
 	share_link = settings.share_link_prefix + remake_id.to_s
 	video_cdn_url = s3_object_video.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
@@ -946,8 +961,9 @@ end
 
 get '/test/s3/download' do
 
-	s3_key = 'Remakes/52d57901db25451344000001/raw_scene_1.mov'
-	local_path = settings.remakes_folder + File.basename(s3_key)
+	s3_key = 'Remakes/539ead2470b35d5c43000026/raw_scene_1.mov'
+	#local_path = settings.remakes_folder + File.basename(s3_key)
+	local_path = "/Users/tomer/Desktop/Delete/Remakes" + File.basename(s3_key)
 
 	download_from_s3 s3_key, local_path
 
@@ -963,7 +979,7 @@ post '/test/s3/upload' do
 	file_path = file.path
 	s3_key = 'Temp/' + File.basename(file_path)
 
-	s3_object = upload_to_s3 file, s3_key, :private, 'video/mp4'
+	s3_object = upload_to_s3 file.path, s3_key, :private, 'video/mp4'
 
 	puts s3_object.public_url
 end
