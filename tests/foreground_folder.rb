@@ -6,7 +6,7 @@ require 'mini_exiftool'
 # Variables
 ffmpeg_path = "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
 xml_path = "C:/Development/Algo/params.xml"#contour_path.sub(/[^.]+\z/,"xml")
-algo_path = "C:/Development/Algo/v-14-06-08/UniformMattingCA.exe"
+algo_path = "C:/Development/Algo/v-14-06-15/UniformMattingCA.exe"
 
 
 puts "Enter Folder Full Path: "
@@ -32,11 +32,15 @@ Dir.foreach(folder) do |file|
 	if (supported_extensions.include?(extension))
 		puts file
 
+		video_metadata = MiniExiftool.new(video_path)
+
+		frame_rate = video_metadata.VideoFrameRate.round.to_s
+
 		# Creating images from the video
 		images_fodler = folder + "Images/"
 		FileUtils.mkdir images_fodler
 		video_path = folder + file
-		ffmpeg_command = ffmpeg_path + ' -i "' + video_path + '" -r 25 -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
+		ffmpeg_command = ffmpeg_path + ' -i "' + video_path + '" -r ' + frame_rate + ' -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
 		puts "*** Video to images *** \n" + ffmpeg_command
 		system(ffmpeg_command)
 
@@ -48,11 +52,10 @@ Dir.foreach(folder) do |file|
 		output_path = folder + File.basename(file, ".*" ) + "-Foreground" + ".avi"
 		# Assigning the flip switch if this video is upside down
 		flip_switch = ""
-		video_metadata = MiniExiftool.new(video_path)
 		if video_metadata.Rotation == 180 then
 			flip_switch = "-Flip"
 		end
-		algo_command = algo_path + ' -CA "' + xml_path + '" "' + contour_path + '" ' + flip_switch + ' "' + first_image_path + '" -avic -r25 -mp4 "' + output_path + '"'
+		algo_command = algo_path + ' -CA "' + xml_path + '" "' + contour_path + '" ' + flip_switch + ' "' + first_image_path + '" -avic -r' + frame_rate + ' -mp4 "' + output_path + '"'
 		puts "*** Running Algo *** \n" + algo_command 
 		system(algo_command)
 
