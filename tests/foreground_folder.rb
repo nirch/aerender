@@ -32,14 +32,13 @@ Dir.foreach(folder) do |file|
 	if (supported_extensions.include?(extension))
 		puts file
 
+		video_path = folder + file
 		video_metadata = MiniExiftool.new(video_path)
-
 		frame_rate = video_metadata.VideoFrameRate.round.to_s
 
 		# Creating images from the video
 		images_fodler = folder + "Images/"
 		FileUtils.mkdir images_fodler
-		video_path = folder + file
 		ffmpeg_command = ffmpeg_path + ' -i "' + video_path + '" -r ' + frame_rate + ' -q:v 1 "' + images_fodler + 'Image-%4d.jpg"'
 		puts "*** Video to images *** \n" + ffmpeg_command
 		system(ffmpeg_command)
