@@ -23,6 +23,7 @@ configure do
 	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
 	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
 	set :rendering_semaphore, Mutex.new
+	set :exiftool_semaphore, Mutex.new
 	set :params_path, "C:/Development/Algo/params.xml"
 	set :cdn_folder, "Z:/CDN/"
 
@@ -552,9 +553,14 @@ def foreground_extraction (remake_id, scene_id, take_id)
 	if story["scenes"][scene_id - 1]["silhouette"] or story["scenes"][scene_id - 1]["silhouettes"] then
 		#raw_video_file_path = handle_orientation(raw_video_file_path)
 
+		# Getting metadata information for this video (protecting it with a semaphore)
 		logger.info "beofre exiftool for " + raw_video_file_path
-		video_metadata = MiniExiftool.new(raw_video_file_path)
+		settings.exiftool_semaphore.synchronize{
+			video_metadata = MiniExiftool.new(raw_video_file_path)
+		}
 		logger.info "after exiftool for " + raw_video_file_path
+
+		# Getting the frame rate for this video
 		frame_rate = get_frame_rate(video_metadata)
 
 		# images from the video
