@@ -503,6 +503,11 @@ def get_frame_rate (video_metadata)
 	return video_metadata.VideoFrameRate.round.to_s
 end
 
+def get_resolution (video_metadata)
+	return video_metadata.ImageHeight
+end
+
+
 def handle_orientation (video_path)
 	video_metadata = MiniExiftool.new(video_path)
 	if video_metadata.Rotation == 180 then
@@ -562,6 +567,26 @@ def foreground_extraction (remake_id, scene_id, take_id)
 
 		# Getting the frame rate for this video
 		frame_rate = get_frame_rate(video_metadata)
+
+		# Getting the resolution (height) for this video
+		resolution = get_resolution(video_metadata)
+
+		# resizing/croping the video if needed
+		if resolution == 720 then
+			# resizing to 360
+			resized_video_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-resized" + ".mp4"
+			resize_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -vf scale=640:360 "' + resized_video_path + '"'
+			logger.info "*** Resize video from 720 to 360 *** " + resize_command
+			system(resize_command)
+			raw_video_file_path = resized_video_path
+		elsif resolution == 480 then
+			# cropping to 360
+			cropped_video_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-cropped" + ".mp4"
+			crop_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -vf crop=640:360:0:60 "' + cropped_video_path + '"'
+			logger.info "*** Crop video from 480 to 360 *** " + crop_command
+			system(crop_command)
+			raw_video_file_path = cropped_video_path
+		end
 
 		# images from the video
 		images_fodler = foreground_folder + "Images/"
