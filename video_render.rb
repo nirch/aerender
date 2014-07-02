@@ -560,6 +560,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 
 		# Getting metadata information for this video (protecting it with a semaphore)
 		logger.info "beofre exiftool for " + raw_video_file_path
+		video_metadata = nil
 		settings.exiftool_semaphore.synchronize{
 			video_metadata = MiniExiftool.new(raw_video_file_path)
 		}
