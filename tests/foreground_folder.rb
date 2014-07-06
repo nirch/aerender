@@ -6,7 +6,7 @@ require 'mini_exiftool'
 # Variables
 ffmpeg_path = "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
 xml_path = "C:/Development/Algo/params.xml"#contour_path.sub(/[^.]+\z/,"xml")
-algo_path = "C:/Development/Algo/v-14-06-22/UniformMattingCA.exe"
+algo_path = "C:/Development/Algo/v-14-07-03/UniformMattingCA.exe"
 
 
 puts "Enter Folder Full Path: "
