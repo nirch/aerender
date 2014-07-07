@@ -576,14 +576,14 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		if resolution == 720 then
 			# resizing to 360
 			resized_video_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-resized" + ".mp4"
-			resize_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -vf scale=640:360 "' + resized_video_path + '"'
+			resize_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -vf scale=640:360 -y "' + resized_video_path + '"'
 			logger.info "*** Resize video from 720 to 360 *** " + resize_command
 			system(resize_command)
 			raw_video_file_path = resized_video_path
 		elsif resolution == 480 then
 			# cropping to 360
 			cropped_video_path = foreground_folder + File.basename(raw_video_file_path, ".*" ) + "-cropped" + ".mp4"
-			crop_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -vf crop=640:360:0:60 "' + cropped_video_path + '"'
+			crop_command = settings.ffmpeg_path + ' -i "' + raw_video_file_path + '" -vf crop=640:360:0:60 -y "' + cropped_video_path + '"'
 			logger.info "*** Crop video from 480 to 360 *** " + crop_command
 			system(crop_command)
 			raw_video_file_path = cropped_video_path
