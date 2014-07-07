@@ -543,6 +543,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 		logger.debug "Waiting for algo on same scene to complete"
 		sleep(1)
 	end
+	logger.info "Creating temp folder: " + foreground_folder.to_s
 	FileUtils.mkdir foreground_folder
 
 	# Updating the status of this footage to Processing
@@ -653,6 +654,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 	#logger.debug "DB Result: " + result.to_s
 
 	# Deleting the folder after everything was updated successfully
+	logger.info "Deleting temp folder: " + foreground_folder.to_s
 	FileUtils.remove_dir(foreground_folder)
 end
 
