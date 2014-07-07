@@ -4,7 +4,7 @@ require 'mini_exiftool'
 
 
 # Variables
-ffmpeg_path = "C:/Development/ffmpeg/ffmpeg-20131202-git-e3d7a39-win64-static/bin/ffmpeg.exe"
+ffmpeg_path = "C:/Development/ffmpeg/bin/ffmpeg.exe"
 xml_path = "C:/Development/Algo/params.xml"#contour_path.sub(/[^.]+\z/,"xml")
 algo_path = "C:/Development/Algo/v-14-07-07/UniformMattingCA.exe"
 
@@ -66,10 +66,10 @@ Dir.foreach(folder) do |file|
 	
 		# Deleting the big avi file
 		puts "*** Deleting avi... ***"
-		FileUtils.remove_file(output_path)
+		#FileUtils.remove_file(output_path)
 
 		# Deleting the images directory
 		puts "*** Deleting Images... ***"
-		FileUtils.remove_dir(images_fodler)
+		#FileUtils.remove_dir(images_fodler)
 	end
 end
