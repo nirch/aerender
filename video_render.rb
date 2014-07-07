@@ -537,16 +537,17 @@ def foreground_extraction (remake_id, scene_id, take_id)
 
 	logger.info "Running foreground extraction for scene " + scene_id.to_s + " for remkae " + remake_id.to_s + " with take_id " + take_id
 
+	# Creating a new directory for the foreground extraction
+	foreground_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "/"
+	while File.directory?(foreground_folder) do
+		logger.debug "Waiting for algo on same scene to complete"
+		sleep(1)
+	end
+	FileUtils.mkdir foreground_folder
+
 	# Updating the status of this footage to Processing
 	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
 	logger.info "Footage status updated to Processing (2) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
-	#logger.debug "DB Result: " + result.to_s
-
-	# Creating a new directory for the foreground extraction
-	foreground_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "/"
-	unless File.directory?(foreground_folder)
-		FileUtils.mkdir foreground_folder
-	end
 
 	# Downloading the raw video from s3
 	raw_video_s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
@@ -652,7 +653,7 @@ def foreground_extraction (remake_id, scene_id, take_id)
 	#logger.debug "DB Result: " + result.to_s
 
 	# Deleting the folder after everything was updated successfully
-	#FileUtils.remove_dir(foreground_folder)
+	FileUtils.remove_dir(foreground_folder)
 end
 
 # The OLD foreground that creates a sequence of png images, and then creates a video with alpha from it
