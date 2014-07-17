@@ -66,10 +66,10 @@ Dir.foreach(folder) do |file|
 	
 		# Deleting the big avi file
 		puts "*** Deleting avi... ***"
-		#FileUtils.remove_file(output_path)
+		FileUtils.remove_file(output_path)
 
 		# Deleting the images directory
 		puts "*** Deleting Images... ***"
-		#FileUtils.remove_dir(images_fodler)
+		FileUtils.remove_dir(images_fodler)
 	end
 end

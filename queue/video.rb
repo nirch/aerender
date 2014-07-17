@@ -30,18 +30,41 @@ module AVUtils
 			false
 		end
 
-		def audio_channel?
+		def audio?
 			return true if @metadata.AudioChannels
 			false
 		end
 
 		def resize(width, height, destination)
+			# ffmpeg -i "resources/720.mp4" -vf scale=640:360 -y "resources/360_from_720.mp4"
 			resize_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf scale=' + width.to_s + ':' + height.to_s + ' -strict -2 -y "' + destination + '"'
 			puts "resize video command: " + resize_command
 			system(resize_command)
 			return AVUtils::Video.new(destination)
-			#raw_video_file_path = resized_video_path
 		end
 
+		def crop(width, height, destination)
+			# ffmpeg -i "resources/480.mov" -vf crop=640:360 -y "resources/360_from_480.mp4"
+			crop_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf crop=' + width.to_s + ':' + height.to_s + ' -strict -2 -y "' + destination + '"'
+			puts "crop video command: " + crop_command
+			system(crop_command)
+			return AVUtils::Video.new(destination)
+		end
+
+		def frames(frame_rate, destination_folder)
+			# ffmpeg -i "resources/upside_down.mov" -r 25 -q:v 1 "resources/frames/Image-%4d.jpg"
+			frames_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -r ' + frame_rate.to_s + ' -q:v 1 "' + destination_folder + 'Image-%4d.jpg"'
+			puts "video frame command: " + frames_command
+			system(frames_command)
+			return true
+		end
+
+		def transcode(codec, bitrate)
+			transcode_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vcodec ' + codec + ' -b:v ' + bitrate.to_s + 'k -strict -2 -y "' + mp4_path + '"'
+			puts "transcode command: " + transcode_command
+			system(transcode_command)
+			return true
+
+		end
 	end
 end
