@@ -28,7 +28,7 @@ class TestAVUtils < Test::Unit::TestCase
  
  	def test_audio
  		video_has_audio = AVUtils::Video.new('resources/720.mp4')
- 		video_no_audio = AVUtils::Video.new('resources/no_audio.mov')
+ 		video_no_audio = AVUtils::Video.new('resources/no_audio.mp4')
 		assert_equal(true, video_has_audio.audio?)
 		assert_equal(false, video_no_audio.audio?)
  	end
@@ -52,6 +52,7 @@ class TestAVUtils < Test::Unit::TestCase
 
 		crop_destination = 'resources/360_from_480.mp4'
 		@delete_files.push(crop_destination)
+
  		cropped_360_video = video_480.crop(640,360,crop_destination)
  		assert_equal("640x360", cropped_360_video.resolution)
  	end
@@ -67,6 +68,28 @@ class TestAVUtils < Test::Unit::TestCase
 		video_83_frames.frames(frame_rate, frame_folder)
 
 		assert_equal(83, Dir[frame_folder  + "**/*"].length)
+ 	end
+
+ 	def test_video_transcode
+		video = AVUtils::Video.new('resources/upside_down.mov')
+
+		transcode_destination = 'resources/transcoded.mp4'
+		@delete_files.push(transcode_destination)
+
+		transcoded_video = video.transcode("mpeg4", "650", transcode_destination)
+		assert_equal(transcoded_video.resolution, video.resolution)
+ 	end
+
+ 	def test_add_audio
+ 		#video_audio = AVUtils::Video.new('resources/audio.mp4')
+ 		video_no_audio = AVUtils::Video.new('resources/no_audio.mp4')
+
+ 		video_audio_path = 'resources/audio.mp4'
+ 		add_audio_destination = 'resources/add_audio.mp4'
+
+ 		add_audio_video = video_no_audio.add_audio(video_audio_path, add_audio_destination)
+ 		assert_equal(true, add_audio_video.audio?)
+
  	end
 
   	def teardown

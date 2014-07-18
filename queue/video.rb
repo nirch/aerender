@@ -59,12 +59,19 @@ module AVUtils
 			return true
 		end
 
-		def transcode(codec, bitrate)
-			transcode_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vcodec ' + codec + ' -b:v ' + bitrate.to_s + 'k -strict -2 -y "' + mp4_path + '"'
+		def transcode(codec, bitrate, destination)
+			# ffmpeg -i "resources/upside_down.mov" -vcodec mpeg4 -b:v 1200k  -y "resources/transcoded.mp4"
+			transcode_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vcodec ' + codec + ' -b:v ' + bitrate.to_s + 'k -strict -2 -y "' + destination + '"'
 			puts "transcode command: " + transcode_command
 			system(transcode_command)
-			return true
+			return AVUtils::Video.new(destination)
+		end
 
+		def add_audio(video_with_audio_path, destination)
+			add_audio_command = AVUtils.ffmpeg_binary + ' -i "' + video_with_audio_path + '" -i "' + @path + '" -c copy -map 0:1 -map 1:0 -strict -2 -y "' + destination + '"'
+			puts "add audio command: " + add_audio_command
+			system(add_audio_command)
+			return AVUtils::Video.new(destination)
 		end
 	end
 end
