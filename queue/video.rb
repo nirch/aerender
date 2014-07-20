@@ -35,7 +35,11 @@ module AVUtils
 			false
 		end
 
-		def resize(width, height, destination)
+		def resize(width, height, destination=nil)
+			if destination == nil then
+				destination = File.join(File.dirname(@path), File.basename(@path,".*") + "-resized.mp4")
+			end
+
 			# ffmpeg -i "resources/720.mp4" -vf scale=640:360 -y "resources/360_from_720.mp4"
 			resize_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf scale=' + width.to_s + ':' + height.to_s + ' -strict -2 -y "' + destination + '"'
 			puts "resize video command: " + resize_command
@@ -43,7 +47,11 @@ module AVUtils
 			return AVUtils::Video.new(destination)
 		end
 
-		def crop(width, height, destination)
+		def crop(width, height, destination=nil)
+			if destination == nil then
+				destination = File.join(File.dirname(@path), File.basename(@path,".*") + "-cropped.mp4")
+			end
+
 			# ffmpeg -i "resources/480.mov" -vf crop=640:360 -y "resources/360_from_480.mp4"
 			crop_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf crop=' + width.to_s + ':' + height.to_s + ' -strict -2 -y "' + destination + '"'
 			puts "crop video command: " + crop_command
@@ -51,15 +59,24 @@ module AVUtils
 			return AVUtils::Video.new(destination)
 		end
 
-		def frames(frame_rate, destination_folder)
+		def frames(frame_rate, destination_folder=nil)
+			if destination_folder == nil then
+				destination_folder = File.dirname(@path) + "/Images/"
+				FileUtils.mkdir destination_folder unless File.directory?(destination_folder)
+			end
+
 			# ffmpeg -i "resources/upside_down.mov" -r 25 -q:v 1 "resources/frames/Image-%4d.jpg"
 			frames_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -r ' + frame_rate.to_s + ' -q:v 1 "' + destination_folder + 'Image-%4d.jpg"'
 			puts "video frame command: " + frames_command
 			system(frames_command)
-			return true
+			return destination_folder
 		end
 
-		def transcode(codec, bitrate, destination)
+		def transcode(codec, bitrate, destination=nil)
+			if destination == nil then
+				destination = File.join(File.dirname(@path), File.basename(@path,".*") + "-transcoded.mp4")
+			end
+
 			# ffmpeg -i "resources/upside_down.mov" -vcodec mpeg4 -b:v 1200k  -y "resources/transcoded.mp4"
 			transcode_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vcodec ' + codec + ' -b:v ' + bitrate.to_s + 'k -strict -2 -y "' + destination + '"'
 			puts "transcode command: " + transcode_command
@@ -67,11 +84,27 @@ module AVUtils
 			return AVUtils::Video.new(destination)
 		end
 
-		def add_audio(video_with_audio_path, destination)
+		def add_audio(video_with_audio_path, destination=nil)
+			if destination == nil then
+				destination = File.join(File.dirname(@path), File.basename(@path,".*") + "-audio.mp4")
+			end
+
 			add_audio_command = AVUtils.ffmpeg_binary + ' -i "' + video_with_audio_path + '" -i "' + @path + '" -c copy -map 0:1 -map 1:0 -strict -2 -y "' + destination + '"'
 			puts "add audio command: " + add_audio_command
 			system(add_audio_command)
 			return AVUtils::Video.new(destination)
 		end
+
+		def process(contour_path, working_folder, destination)
+			raise Errno::ENOENT, "the directory '#{working_folder}' does not exist" unless File.directory?(working_folder)
+			raise Errno::ENOENT, "the file '#{contour_path}' does not exist" unless File.exists?(contour_path)
+
+			#video_to_process = self
+
+			#if self.resolution == "1280x720" then
+			#	video_to_process = self.resize(640, 360, )
+		end
+
+
 	end
 end
