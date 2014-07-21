@@ -6,7 +6,7 @@ require "test/unit"
 class TestAVUtils < Test::Unit::TestCase
  
 	def setup
-		AVUtils.ffmpeg_binary = '/Users/tomer/Documents/ffmpeg/ffmpeg'
+		AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
 		@delete_files = Array.new
 		@delete_folder = nil	
 	end
