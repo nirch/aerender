@@ -15,4 +15,34 @@ module AVUtils
   def self.ffmpeg_binary
     @ffmpeg_binary || 'ffmpeg'
   end
+
+  # Set the path of the algo binary.
+  #
+  # @param [String] path to the algo binary
+  # @return [String] the path you set
+  def self.algo_binary=(bin)
+    @algo_binary = bin
+  end
+
+  # Get the path to the algo binary, defaulting to 'UniformBackground.exe'
+  #
+  # @return [String] the path to the ffmpeg binary
+  def self.algo_binary
+    @algo_binary || 'UniformBackground.exe'
+  end
+
+  # Set the path of the algo params xml.
+  #
+  # @param [String] path to the algo params xml
+  # @return [String] the path you set
+  def self.algo_params=(params)
+    @algo_params = params
+  end
+
+  # Get the path to the algo params xml, defaulting to 'params.xml'
+  #
+  # @return [String] the path to the algo params xml
+  def self.algo_params
+    @algo_params || 'params.xml'
+  end
 end

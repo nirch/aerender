@@ -94,7 +94,8 @@ class TestAVUtils < Test::Unit::TestCase
 		video_83_frames = AVUtils::Video.new('resources/upside_down.mov')
 		frame_rate = video_83_frames.frame_rate
 
-		frame_folder = video_83_frames.frames(frame_rate)
+		first_frame_path = video_83_frames.frames(frame_rate)
+		frame_folder = File.dirname(first_frame_path)
 		@delete_folder = frame_folder
 
 		assert_equal(true, File.directory?(frame_folder))
