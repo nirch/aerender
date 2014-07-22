@@ -3,7 +3,7 @@ require '../queue/Video'
 
 require "test/unit"
 
-class TestAVUtils < Test::Unit::TestCase
+class TestVideoProcess < Test::Unit::TestCase
  
 	def setup
 		AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'

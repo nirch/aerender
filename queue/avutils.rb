@@ -1,3 +1,4 @@
+require_relative 'Video'
 
 module AVUtils
   # Set the path of the ffmpeg binary.
