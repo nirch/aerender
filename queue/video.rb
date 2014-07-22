@@ -87,7 +87,6 @@ module AVUtils
 		end
 
 		def process(contour_path, destination=nil)
-			raise Errno::ENOENT, "the directory '#{working_folder}' does not exist" unless File.directory?(working_folder)
 			raise Errno::ENOENT, "the file '#{contour_path}' does not exist" unless File.exists?(contour_path)
 
 			raw_video = self

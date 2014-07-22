@@ -81,7 +81,7 @@ class TestAVUtils < Test::Unit::TestCase
 		video_83_frames = AVUtils::Video.new('resources/upside_down.mov')
 		frame_rate = video_83_frames.frame_rate
 
-		frame_folder = 'resources/frames/' + "/"
+		frame_folder = 'resources/frames/'
 		FileUtils.mkdir frame_folder
 		@delete_folder = frame_folder
 
