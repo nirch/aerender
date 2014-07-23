@@ -1,7 +1,7 @@
 require 'sinatra'
 require 'aws-sdk'
 require 'mongo'
-require_relative 'queue/AVUtils'
+require_relative 'video/AVUtils'
 
 configure do
 	# Global configuration (regardless of the environment)

@@ -1,5 +1,5 @@
-require '../queue/AVUtils'
-require '../queue/Video'
+require '../video/AVUtils'
+require '../video/Video'
 
 require "test/unit"
 
