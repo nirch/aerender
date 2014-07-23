@@ -18,6 +18,7 @@ configure do
 	AVUtils.algo_params = 'C:/Development/Algo/params.xml'
 
 	set :logging, Logger::DEBUG
+	AVUtils.logger = ENV['rack.logger']
 end
 
 configure :development do
@@ -210,6 +211,18 @@ post '/process' do
 	# sleep 100
 	# logger.info "successfully processed"
 	# return "success"
+end
+
+get '/test/logger' do
+	logger.info "Hi!"
+	video_720 = AVUtils::Video.new('tests/resources/720.mp4')
+	video_720.resolution
+end
+
+get '/test/exception' do
+	logger.info "Hi!"
+	video_720 = AVUtils::Video.new('tests/resources/720x.mp4')
+	video_720.resolution
 end
 
 get '/health/check' do

@@ -15,6 +15,8 @@ module AVUtils
 			@@exiftool_semaphore.synchronize{
 				@metadata = MiniExiftool.new(@path)
 			}
+
+			AVUtils.logger.info "metadata for '#{path}' successfully loaded"
 		end
 
 		def resolution
@@ -40,7 +42,7 @@ module AVUtils
 
 			# ffmpeg -i "resources/720.mp4" -vf scale=640:360 -y "resources/360_from_720.mp4"
 			resize_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf scale=' + width.to_s + ':' + height.to_s + ' -strict -2 -y "' + destination + '"'
-			puts "resize video command: " + resize_command
+			AVUtils.logger.info "resize video command: " + resize_command
 			system(resize_command)
 			return AVUtils::Video.new(destination)
 		end
@@ -50,7 +52,7 @@ module AVUtils
 
 			# ffmpeg -i "resources/480.mov" -vf crop=640:360 -y "resources/360_from_480.mp4"
 			crop_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf crop=' + width.to_s + ':' + height.to_s + ' -strict -2 -y "' + destination + '"'
-			puts "crop video command: " + crop_command
+			AVUtils.logger.info "crop video command: " + crop_command
 			system(crop_command)
 			return AVUtils::Video.new(destination)
 		end
@@ -61,7 +63,7 @@ module AVUtils
 
 			# ffmpeg -i "resources/upside_down.mov" -r 25 -q:v 1 "resources/frames/Image-%4d.jpg"
 			frames_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -r ' + frame_rate.to_s + ' -q:v 1 "' + destination_folder + 'Image-%4d.jpg"'
-			puts "video frame command: " + frames_command
+			AVUtils.logger.info "video frame command: " + frames_command
 			system(frames_command)
 			return destination_folder + "Image-0001.jpg"
 		end
@@ -71,7 +73,7 @@ module AVUtils
 
 			# ffmpeg -i "resources/upside_down.mov" -vcodec mpeg4 -b:v 1200k  -y "resources/transcoded.mp4"
 			transcode_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vcodec ' + codec + ' -b:v ' + bitrate.to_s + 'k -strict -2 -y "' + destination + '"'
-			puts "transcode command: " + transcode_command
+			AVUtils.logger.info "transcode command: " + transcode_command
 			system(transcode_command)
 			return AVUtils::Video.new(destination)
 		end
@@ -81,7 +83,7 @@ module AVUtils
 
 			# fmpeg -i "resources/audio.mp4" -i "resources/no_audio.mp4" -c copy -map 0:1 -map 1:0 -strict -2 -y "resources/no_audio-audio.mp4"
 			add_audio_command = AVUtils.ffmpeg_binary + ' -i "' + video_with_audio_path + '" -i "' + @path + '" -c copy -map 0:1 -map 1:0 -strict -2 -y "' + destination + '"'
-			puts "add audio command: " + add_audio_command
+			AVUtils.logger.info "add audio command: " + add_audio_command
 			system(add_audio_command)
 			return AVUtils::Video.new(destination)
 		end
@@ -110,7 +112,7 @@ module AVUtils
 
 			# Running the foreground extraction algorithm
 			algo_command = AVUtils.algo_binary + ' -CA "' + AVUtils.algo_params + '" "' + contour_path + '" ' + flip_switch + ' "' + first_frame_path + '" -avic -r' + frame_rate + ' -mp4 "' + destination + '"'
-			puts "algo command: " + algo_command 
+			AVUtils.logger.info "algo command: " + algo_command 
 			system(algo_command)
 			video_to_process = AVUtils::Video.new(destination)
 

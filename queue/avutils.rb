@@ -1,6 +1,27 @@
 require_relative 'Video'
+require 'logger'
 
 module AVUtils
+
+  # FFMPEG logs information about its progress when it's transcoding.
+  # Jack in your own logger through this method if you wish to.
+  #
+  # @param [Logger] log your own logger
+  # @return [Logger] the logger you set
+  def self.logger=(log)
+    @logger = log
+  end
+
+  # Get FFMPEG logger.
+  #
+  # @return [Logger]
+  def self.logger
+    return @logger if @logger
+    logger = Logger.new(STDOUT)
+    logger.level = Logger::INFO
+    @logger = logger
+  end
+
   # Set the path of the ffmpeg binary.
   # Can be useful if you need to specify a path such as /usr/local/bin/ffmpeg
   #
