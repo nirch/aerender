@@ -58,6 +58,7 @@ configure :test do
 	set :db, db_connection.db()
 
 	# Logging to file
+	FileUtils.mkdir 'logs' unless File.directory?('logs')
   	log_file = File.new('logs/video_process_worker.log', "a+")
   	log_file.sync = true
  	$stdout.reopen(log_file)
@@ -79,6 +80,7 @@ configure :production do
 	set :db, db_connection.db()
 
 	# Logging to file
+	FileUtils.mkdir 'logs' unless File.directory?('logs')
   	log_file = File.new('logs/video_process_worker.log', "a+")
   	log_file.sync = true
  	$stdout.reopen(log_file)
