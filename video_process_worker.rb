@@ -17,7 +17,22 @@ configure do
 	AVUtils.algo_binary = 'C:/Development/Algo/v-14-07-19/UniformMattingCA.exe'
 	AVUtils.algo_params = 'C:/Development/Algo/params.xml'
 
-	set :logging, Logger::DEBUG
+	# Logger.class_eval { alias :write :'<<' }
+	# #log_file_path = File.join(File.expand_path(__FILE__), '..', 'logs', 'video_process_worker.log')
+	# $logger = Logger.new('logs/video_process_worker.log', 'weekly')
+	# set :logging, Logger::DEBUG
+	# use Rack::CommonLogger, $logger
+	# AVUtils.logger = $logger
+
+
+	# Logging everything to file (instead of console)
+	# log_file_path = File.join(File.expand_path(__FILE__), '..', 'logs', 'video_process_worker.log')
+ #  	log_file = File.new(log_file_path, "a+")
+ #  	log_file.sync = true
+ # 	$stdout.reopen(log_file)
+ #  	$stderr.reopen(log_file)
+
+ 	set :logging, Logger::DEBUG
 	AVUtils.logger = ENV['rack.logger']
 end
 
@@ -25,8 +40,6 @@ configure :development do
 	# Setting folders
 	set :remakes_folder, "C:/Development/Homage/Algo/Remakes/"
 	set :contour_folder, "C:/Development/Homage/Algo/Contours/"
-
-	set :raise_errors, true
 
 	# Process Footage Queue
 	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueueTest"
@@ -68,6 +81,10 @@ configure :production do
 	set :db, db_connection.db()
 end	
 
+# before do
+# 	env['rack.logger'] = $logger
+# end
+
 
 module FootageStatus
   Open = 0
@@ -102,8 +119,8 @@ for i in 1..PARALLEL_PROCESS_NUM do
 					#http.post('/process', "remake_id=2323, scene_id=2")
 					#Net::HTTP.post_form(settings.process_footage_uri, params)
 
-					if response.code != 200 then
-						raise response.message["message"]
+					if response.code != '200' then
+					 	raise response.message
 					end
 				}
 			rescue => error
@@ -187,6 +204,7 @@ post '/process' do
 	logger.info "Deleting temp folder: " + process_folder
 	FileUtils.remove_dir(process_folder)
 
+	return 200
 
 	# # Checking if this take is the latest take. If there is a newer take to this scene, ignoring this take
 	# # TODO: this logic should move to the server?

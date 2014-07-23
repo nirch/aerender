@@ -15,8 +15,6 @@ module AVUtils
 			@@exiftool_semaphore.synchronize{
 				@metadata = MiniExiftool.new(@path)
 			}
-
-			AVUtils.logger.info "metadata for '#{path}' successfully loaded"
 		end
 
 		def resolution
