@@ -13,7 +13,7 @@ s3 = AWS::S3.new
 S3_HOMAGE_BUCKET = s3.buckets['homageapp']
 
 
-remake_to_delete = '53d00a13d8ea200698000001'
+remake_to_delete = '53d02577d8ea2009a0000001'
 remake_id_to_delete = BSON::ObjectId.from_string(remake_to_delete)
 remake_s3 = "Remakes/" + remake_to_delete
 

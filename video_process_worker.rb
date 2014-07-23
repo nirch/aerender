@@ -17,23 +17,13 @@ configure do
 	AVUtils.algo_binary = 'C:/Development/Algo/v-14-07-19/UniformMattingCA.exe'
 	AVUtils.algo_params = 'C:/Development/Algo/params.xml'
 
+	# Another logging option...
 	# Logger.class_eval { alias :write :'<<' }
 	# #log_file_path = File.join(File.expand_path(__FILE__), '..', 'logs', 'video_process_worker.log')
 	# $logger = Logger.new('logs/video_process_worker.log', 'weekly')
 	# set :logging, Logger::DEBUG
 	# use Rack::CommonLogger, $logger
 	# AVUtils.logger = $logger
-
-
-	# Logging everything to file (instead of console)
-	# log_file_path = File.join(File.expand_path(__FILE__), '..', 'logs', 'video_process_worker.log')
- #  	log_file = File.new(log_file_path, "a+")
- #  	log_file.sync = true
- # 	$stdout.reopen(log_file)
- #  	$stderr.reopen(log_file)
-
- 	set :logging, Logger::DEBUG
-	AVUtils.logger = ENV['rack.logger']
 end
 
 configure :development do
@@ -48,15 +38,16 @@ configure :development do
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
+
+	# in debug logging into the console
+	set :logging, Logger::DEBUG
+	AVUtils.logger = ENV['rack.logger']
 end
 
 configure :test do
 	# Setting folders
-	#set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
-	#set :contour_folder, "C:/Users/Administrator/Documents//Contours/"
-
-	set :remakes_folder, "C:/Development/Homage/Algo/Remakes/"
-	set :contour_folder, "C:/Development/Homage/Algo/Contours/"
+	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
+	set :contour_folder, "C:/Users/Administrator/Documents//Contours/"
 
 	# Process Footage Queue
 	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueueTest"
@@ -65,6 +56,13 @@ configure :test do
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
+
+	# Logging to file
+  	log_file = File.new('logs/video_process_worker.log', "a+")
+  	log_file.sync = true
+ 	$stdout.reopen(log_file)
+  	$stderr.reopen(log_file)
+  	#$logger = Logger.new(log_file, 'daily')
 end	
 
 configure :production do
@@ -79,12 +77,17 @@ configure :production do
     # DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
 	set :db, db_connection.db()
+
+	# Logging to file
+  	log_file = File.new('logs/video_process_worker.log', "a+")
+  	log_file.sync = true
+ 	$stdout.reopen(log_file)
+  	$stderr.reopen(log_file)
 end	
 
 # before do
 # 	env['rack.logger'] = $logger
 # end
-
 
 module FootageStatus
   Open = 0
@@ -122,6 +125,8 @@ for i in 1..PARALLEL_PROCESS_NUM do
 					if response.code != '200' then
 					 	raise response.message
 					end
+
+					puts 'message sucessfully processed: ' + msg.id + "; " + msg.body
 				}
 			rescue => error
 				puts "rescued, exception happend, keeping the polling thread alive. Error: " + error.to_s
@@ -142,7 +147,6 @@ post '/process' do
 	remakes = settings.db.collection("Remakes")
 	remake = remakes.find_one(remake_id)
 	story = settings.db.collection("Stories").find_one(remake["story_id"])
-
 
 	# Creating a new directory for the processing
 	process_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "_" + take_id + "/"
@@ -229,18 +233,6 @@ post '/process' do
 	# sleep 100
 	# logger.info "successfully processed"
 	# return "success"
-end
-
-get '/test/logger' do
-	logger.info "Hi!"
-	video_720 = AVUtils::Video.new('tests/resources/720.mp4')
-	video_720.resolution
-end
-
-get '/test/exception' do
-	logger.info "Hi!"
-	video_720 = AVUtils::Video.new('tests/resources/720x.mp4')
-	video_720.resolution
 end
 
 get '/health/check' do

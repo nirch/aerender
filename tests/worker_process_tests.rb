@@ -6,7 +6,6 @@ class TestWorkerProcess < MiniTest::Unit::TestCase
 	include Rack::Test::Methods
 
 	REMAKES = DB.collection("Remakes")
-	#USERS = DB.collection("Users")
 	STORIES = DB.collection("Stories")
 
 	def app
@@ -44,16 +43,13 @@ class TestWorkerProcess < MiniTest::Unit::TestCase
 		post '/process', {:remake_id => remake["_id"].to_s, :scene_id => "1", :take_id => remake["footages"][0]["take_id"]}
 
 		assert_equal(200, last_response.status)
+
+		# testing that files were successfully uploaded to s3
 		assert_equal(true, S3_HOMAGE_BUCKET.objects[processed_s3_key].exists?)
 
+		# testing that the status in the DB was successfully updated
 		remake = REMAKES.find_one(remake["_id"])
 		assert_equal(FootageStatus::Ready, remake["footages"][0]["status"])
-		# tests: db status changed; uploaded to s3
-
-
-		# delete document
-
-		# delete s3
 	end
 
 	def create_remake

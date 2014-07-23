@@ -13,5 +13,5 @@ process_footage_queue = sqs.queues[process_footage_queue_url]
 
 puts process_footage_queue.url
 
-message = {remake_id: "53d00cfcd8ea201c3c000001", scene_id: "1", take_id: "VID_20140720_160644"}
+message = {remake_id: "53d02644d8ea200b00000001", scene_id: "1", take_id: "VID_20140720_160644"}
 process_footage_queue.send_message(message.to_json)
