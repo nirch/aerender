@@ -5,6 +5,7 @@ require_relative 'video/AVUtils'
 
 configure do
 	# Global configuration (regardless of the environment)
+	set :server, 'webrick'
 
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
@@ -149,7 +150,8 @@ for i in 1..PARALLEL_PROCESS_NUM do
 					puts 'message sucessfully processed: ' + msg.id + "; " + msg.body
 				}
 			rescue => error
-				puts "rescued, error occured, keeping the polling thread alive. Error: " + error.backtrace
+				puts "rescued, error occured, keeping the polling thread alive. Error: " + error.to_s
+				puts  error.backtrace.join("\n")
 			end
 		end
 	end
