@@ -35,6 +35,10 @@ class TestAVUtils < Test::Unit::TestCase
  	def test_frame_rate
  	end
 
+ 	def test_invalid_video
+ 		assert_raise(Errno::EINVAL) { AVUtils::Video.new('resources/invalid.avi') }
+ 	end
+
  	def test_resize_720_to_360
 		video_720 = AVUtils::Video.new('resources/720.mp4')
 
@@ -156,18 +160,4 @@ class TestAVUtils < Test::Unit::TestCase
   		end
   	end
 end
-
-
-# AVUtils.ffmpeg_binary = '/Users/tomer/Documents/ffmpeg/ffmpeg'
-# video = AVUtils::Video.new('/Users/tomer/Desktop/Delete/crop_and_resize/720.mp4')
-# puts video.resolution
-# puts video.frame_rate
-# puts video.upside_down?
-# puts video.audio_channel?
-
-# resized_video = video.resize(640,360,'/Users/tomer/Desktop/Delete/crop_and_resize/720_resize.mp4')
-# puts resized_video.resolution
-# puts resized_video.frame_rate
-# puts resized_video.upside_down?
-# puts resized_video.audio_channel?
 

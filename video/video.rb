@@ -8,9 +8,14 @@ module AVUtils
 
 		def initialize(path)
 			raise Errno::ENOENT, "the file '#{path}' does not exist" unless File.exists?(path)
+			raise Errno::ENOENT, "the file '#{AVUtils.ffmpeg_binary}' does not exist" unless File.exists?(AVUtils.ffmpeg_binary)
 
 			@path = path
-		
+
+			# Checking that the input is a valid video
+			movie = FFMPEG::Movie.new(@path)
+			raise Errno::EINVAL, "the file '#{path}' is an invalid video" unless movie.valid?
+
 			# Protecting the call to an outside process with a mutex
 			@@exiftool_semaphore.synchronize{
 				@metadata = MiniExiftool.new(@path)

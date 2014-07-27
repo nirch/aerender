@@ -1,5 +1,6 @@
 require_relative 'Video'
 require 'logger'
+require 'streamio-ffmpeg'
 
 module AVUtils
 
@@ -10,6 +11,7 @@ module AVUtils
   # @return [Logger] the logger you set
   def self.logger=(log)
     @logger = log
+    FFMPEG.logger = log
   end
 
   # Get FFMPEG logger.
@@ -29,6 +31,7 @@ module AVUtils
   # @return [String] the path you set
   def self.ffmpeg_binary=(bin)
     @ffmpeg_binary = bin
+    FFMPEG.ffmpeg_binary = bin
   end
 
   # Get the path to the ffmpeg binary, defaulting to 'ffmpeg'
