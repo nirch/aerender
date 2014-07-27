@@ -239,7 +239,7 @@ error do
 		original_folder = File.expand_path(@process_folder)
 		renamed_folder = original_folder + '_backup_' + Time.now.to_i.to_s
 		logger.info 'error occured, renaming the process folder to ' + renamed_folder
-		File.rename original_folder renamed_folder
+		File.rename(original_folder, renamed_folder)
 	else
 		logger.debug 'process folder is nil - nothing to delete'
 	end
