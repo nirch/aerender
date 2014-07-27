@@ -134,6 +134,9 @@ for i in 1..PARALLEL_PROCESS_NUM do
 					# Extending the timeout
 					http.read_timeout = 150
 
+					# Internal (localhost) request. No need for SSL
+					http.use_ssl = false
+
 					# Making the request
 					response = http.request(request)
 					#http.post('/process', "remake_id=2323, scene_id=2")
