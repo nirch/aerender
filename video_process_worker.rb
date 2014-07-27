@@ -27,6 +27,9 @@ configure do
 end
 
 configure :development do
+	enable :dump_errors, :show_exceptions
+	disable :raise_errors
+
 	# Setting folders
 	set :remakes_folder, "C:/Development/Homage/Algo/Remakes/"
 	set :contour_folder, "C:/Development/Homage/Algo/Contours/"
@@ -45,6 +48,9 @@ configure :development do
 end
 
 configure :test do
+	enable :dump_errors 
+	disable :raise_errors, :show_exceptions
+
 	# Setting folders
 	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
 	set :contour_folder, "C:/Users/Administrator/Documents//Contours/"
@@ -70,6 +76,9 @@ configure :test do
 end	
 
 configure :production do
+	enable :dump_errors
+	disable :raise_errors, :show_exceptions
+
 	# Setting folders
 	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
 	set :contour_folder, "C:/Users/Administrator/Documents//Contours/"
@@ -137,7 +146,7 @@ for i in 1..PARALLEL_PROCESS_NUM do
 					puts 'message sucessfully processed: ' + msg.id + "; " + msg.body
 				}
 			rescue => error
-				puts "rescued, exception happend, keeping the polling thread alive. Error: " + error.to_s
+				puts "rescued, error occured, keeping the polling thread alive. Error: " + error.to_s
 			end
 		end
 	end
@@ -220,14 +229,21 @@ post '/process' do
 
 end
 
+
 error do
+	logger.error 'error caught in error block: ' + env['sinatra.error'].to_s
+
 	# renaming the process folder if it exists
 	if @process_folder then
 		original_folder = File.expand_path(@process_folder)
 		renamed_folder = original_folder + '_backup_' + Time.now.to_i.to_s
 		logger.info 'error occured, renaming the process folder to ' + renamed_folder
 		File.rename original_folder renamed_folder
+	else
+		logger.debug 'process folder is nil - nothing to delete'
 	end
+
+	raise
 end
 
 get '/health/check' do
