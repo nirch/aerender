@@ -52,8 +52,10 @@ configure :test do
 	disable :raise_errors, :show_exceptions
 
 	# Setting folders
-	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
-	set :contour_folder, "C:/Users/Administrator/Documents/Contours/"
+	#set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
+	#set :contour_folder, "C:/Users/Administrator/Documents/Contours/"
+	set :remakes_folder, "C:/Development/Homage/Algo/Remakes/"
+	set :contour_folder, "C:/Development/Homage/Algo/Contours/"
 
 	# Process Footage Queue
 	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueueTest"
@@ -149,7 +151,7 @@ for i in 1..PARALLEL_PROCESS_NUM do
 					puts 'message sucessfully processed: ' + msg.id + "; " + msg.body
 				}
 			rescue => error
-				puts "rescued, error occured, keeping the polling thread alive. Error: " + error.to_s
+				puts "rescued, error occured, keeping the polling thread alive. Error: " + error.backtrace
 			end
 		end
 	end
