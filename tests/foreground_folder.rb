@@ -6,11 +6,9 @@ require 'mini_exiftool'
 # Variables
 ffmpeg_path = "C:/Development/ffmpeg/bin/ffmpeg.exe"
 xml_path = "C:/Development/Algo/params.xml"#contour_path.sub(/[^.]+\z/,"xml")
-algo_path = "C:/Development/Algo/v-14-07-07/UniformMattingCA.exe"
+algo_path = "C:/Development/Algo/" + ARGV[0] + "/UniformMattingCA.exe"
 
-
-puts "Enter Folder Full Path: "
-folder_input = gets
+folder_input = ARGV[1]
 # Removing unwanted charachters form the input and switching from backslash to slash
 folder_chomped = folder_input.tr('"', '').chomp
 folder = folder_chomped.gsub /\\+/, '/'
