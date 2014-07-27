@@ -61,7 +61,7 @@ module AVUtils
 
 			# ffmpeg -i "resources/upside_down.mov" -r 25 -q:v 1 "resources/frames/Image-%4d.jpg"
 			frames_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -r ' + frame_rate.to_s + ' -q:v 1 "' + destination_folder + 'Image-%4d.jpg"'
-			AVUtils.logger.info "video frame command: " + frames_command
+			AVUtils.logger.info "video to frames command: " + frames_command
 			system(frames_command)
 			return destination_folder + "Image-0001.jpg"
 		end
@@ -88,6 +88,8 @@ module AVUtils
 
 		def process(contour_path, destination=nil)
 			raise Errno::ENOENT, "the file '#{contour_path}' does not exist" unless File.exists?(contour_path)
+			raise Errno::ENOENT, "the file '#{AVUtils.algo_binary}' does not exist" unless File.exists?(AVUtils.algo_binary)
+			raise Errno::ENOENT, "the file '#{AVUtils.algo_params}' does not exist" unless File.exists?(AVUtils.algo_params)
 
 			raw_video = self
 			video_to_process = self

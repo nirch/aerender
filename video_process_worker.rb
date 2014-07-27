@@ -166,7 +166,8 @@ post '/process' do
 	story = settings.db.collection("Stories").find_one(remake["story_id"])
 
 	# Creating a new directory for the processing
-	@process_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "_" + take_id + "/"
+	#@process_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "_" + take_id + "/"
+	@process_folder = settings.remakes_folder + take_id + "/"
 
 	# Returning an error if the directory exists
 	if File.directory?(@process_folder) then
