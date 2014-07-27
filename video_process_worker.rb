@@ -52,10 +52,8 @@ configure :test do
 	disable :raise_errors, :show_exceptions
 
 	# Setting folders
-	#set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
-	#set :contour_folder, "C:/Users/Administrator/Documents/Contours/"
-	set :remakes_folder, "C:/Development/Homage/Algo/Remakes/"
-	set :contour_folder, "C:/Development/Homage/Algo/Contours/"
+	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
+	set :contour_folder, "C:/Users/Administrator/Documents/Contours/"
 
 	# Process Footage Queue
 	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueueTest"
