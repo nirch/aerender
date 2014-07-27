@@ -243,8 +243,6 @@ error do
 	else
 		logger.debug 'process folder is nil - nothing to delete'
 	end
-
-	raise
 end
 
 get '/health/check' do
