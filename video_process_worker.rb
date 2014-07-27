@@ -57,6 +57,8 @@ configure :test do
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
 
+	set :logging, Logger::DEBUG
+
 	# Logging to file
 	logging_dir = File.dirname(File.expand_path(__FILE__)) + "/logs"
 	FileUtils.mkdir logging_dir unless File.directory?(logging_dir)
@@ -79,6 +81,8 @@ configure :production do
     # DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
 	set :db, db_connection.db()
+
+	set :logging, Logger::INFO
 
 	# Logging to file
 	logging_dir = File.dirname(File.expand_path(__FILE__)) + "/logs"
@@ -153,17 +157,17 @@ post '/process' do
 	story = settings.db.collection("Stories").find_one(remake["story_id"])
 
 	# Creating a new directory for the processing
-	process_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "_" + take_id + "/"
+	@process_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "_" + take_id + "/"
 
 	# Returning an error if the directory exists
-	if File.directory?(process_folder) then
-		error_message = "process directory already exists for: " + process_folder
+	if File.directory?(@process_folder) then
+		error_message = "process directory already exists for: " + @process_folder
 		logger.error error_message
-		return [500, [{:message => error_message}.to_json]]
+		halt 500
 	end
 
-	logger.info "Creating temp folder: " + process_folder.to_s
-	FileUtils.mkdir process_folder
+	logger.info "Creating temp folder: " + @process_folder.to_s
+	FileUtils.mkdir @process_folder
 
 	# Updating the status of this footage to Processing
 	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
@@ -171,7 +175,7 @@ post '/process' do
 
 	# Downloading the raw video from s3
 	raw_video_s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
-	raw_video_file_path = process_folder + File.basename(raw_video_s3_key)	
+	raw_video_file_path = @process_folder + File.basename(raw_video_s3_key)	
 	download_from_s3 raw_video_s3_key, raw_video_file_path
 
 	raw_video = AVUtils::Video.new(raw_video_file_path)
@@ -209,34 +213,21 @@ post '/process' do
 	end
 
 	# Deleting the folder after everything was updated successfully
-	logger.info "Deleting temp folder: " + process_folder
-	FileUtils.remove_dir(process_folder)
+	logger.info "Deleting temp folder: " + @process_folder
+	FileUtils.remove_dir(@process_folder)
 
 	return 200
 
-	# # Checking if this take is the latest take. If there is a newer take to this scene, ignoring this take
-	# # TODO: this logic should move to the server?
-	# if is_latest_take(remake, scene_id, take_id) then
+end
 
-	# 	# Updating the status of this remake to in progress / Again move this to the server?
-	# 	remakes.update({_id: remake_id}, {"$set" => {status: 2}}) # RemakeStatus::InProgress
-
-	# 	# Updating the status of this footage to uploaded / Again move this to server
-	# 	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Uploaded}})
-
-	# 	logger.info "Footage status updated to Uploaded (1) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
-
-	# 	foreground_extraction remake_id, scene_id, take_id
-	# else
-	# 	# if this is not the latest take, ignoring the call
-	# 	logger.info "Ignoring the request since this is not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
-	# end
-
-
-	# logger.info "params = " + params.to_s
-	# sleep 100
-	# logger.info "successfully processed"
-	# return "success"
+error do
+	# renaming the process folder if it exists
+	if @process_folder then
+		original_folder = File.expand_path(@process_folder)
+		renamed_folder = original_folder + '_backup_' + Time.now.to_i.to_s
+		logger.info 'error occured, renaming the process folder to ' + renamed_folder
+		File.rename original_folder renamed_folder
+	end
 end
 
 get '/health/check' do
