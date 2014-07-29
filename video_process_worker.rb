@@ -215,12 +215,12 @@ post '/process' do
 		end
 	end
 
-	# upload to s3
-	processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
-	upload_to_s3 processed_video.path, processed_video_s3_key, :private
-
-	# Updating the status of this footage to Ready
+	# Uploading and updating the status of this footage to Ready only if this is the latest take for the scene (else ignoring it)
 	if is_latest_take(remake, scene_id, take_id) then
+		# upload to s3
+		processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
+		upload_to_s3 processed_video.path, processed_video_s3_key, :private
+
 		result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
 		logger.info "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 	else
@@ -288,9 +288,9 @@ def upload_to_s3 (file_path, s3_key, acl, content_type=nil)
 	s3_object = bucket.objects[s3_key]
 
 	logger.info 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
-	file = File.new(file_path)
-	s3_object.write(file, {:acl => acl, :content_type => content_type})
-	file.close
+	#file = File.new(file_path)
+	s3_object.write(:file => file_path, {:acl => acl, :content_type => content_type})
+	#file.close
 	logger.info "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
 
 	return s3_object
@@ -302,7 +302,7 @@ def is_latest_take(remake, scene_id, take_id)
 		if db_take_id == take_id then
 			return true
 		else
-			logger.info "Not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">. DB take_id <" + db_take_id + "> while given take_id <" + take_id + ">"
+			logger.info "Not the latest take for remake <" + remake["_id"].to_s + ">, footage <" + scene_id.to_s + ">. DB take_id <" + db_take_id + "> while given take_id <" + take_id + ">"
 			return false
 		end
 	else
