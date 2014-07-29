@@ -289,7 +289,7 @@ def upload_to_s3 (file_path, s3_key, acl, content_type=nil)
 
 	logger.info 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
 	#file = File.new(file_path)
-	s3_object.write(:file => file_path, {:acl => acl, :content_type => content_type})
+	s3_object.write(Pathname.new(file_path), {:acl => acl, :content_type => content_type})
 	#file.close
 	logger.info "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
 
