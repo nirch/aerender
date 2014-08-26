@@ -825,7 +825,7 @@ def render_video (remake_id)
 	end
 
 	# Updating the DB that the movie is ready
-	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration}})
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration, grade:-1}})
 	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
 	send_movie_ready_push_notification(story, remake)
