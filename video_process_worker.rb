@@ -229,7 +229,7 @@ post '/process' do
 
 	# Deleting the folder after everything was updated successfully
 	logger.info "Deleting temp folder: " + @process_folder
-	FileUtils.remove_dir(@process_folder)
+	FileUtils.remove_dir(@process_folder, true)
 
 	return 200
 
