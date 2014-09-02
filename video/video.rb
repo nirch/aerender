@@ -116,7 +116,8 @@ module AVUtils
 			destination = File.join(File.dirname(@path), File.basename(@path,".*") + "-foreground.avi") unless destination
 
 			# Running the foreground extraction algorithm
-			algo_command = AVUtils.algo_binary + ' -CA "' + AVUtils.algo_params + '" "' + contour_path + '" ' + flip_switch + ' "' + first_frame_path + '" -avic -r' + frame_rate + ' -mp4 "' + destination + '"'
+			#algo_command = AVUtils.algo_binary + ' -CA "' + AVUtils.algo_params + '" "' + contour_path + '" ' + flip_switch + ' "' + first_frame_path + '" -avic -r' + frame_rate + ' -mp4 "' + destination + '"'
+			algo_command = AVUtils.algo_binary + ' "' + AVUtils.algo_params + '" "' + contour_path + '" ' + flip_switch + ' "' + first_frame_path + '" -avic -r' + frame_rate + ' -mp4 "' + destination + '"'
 			AVUtils.logger.info "algo command: " + algo_command 
 			system(algo_command)
 			video_to_process = AVUtils::Video.new(destination)
