@@ -91,6 +91,15 @@ module AVUtils
 			return AVUtils::Video.new(destination)
 		end
 
+		def thumbnail(time, destination=nil)
+			destination = File.join(File.dirname(@path), File.basename(@path,".*") + ".jpg") unless destination
+
+			thumbnail_command = AVUtils.ffmpeg_binary + ' -ss ' + time.to_s + ' -i "' + @path + '" -frames:v 1 -y ' + '"' + destination + '"'
+			AVUtils.logger.info "thumbnail command: " + thumbnail_command
+			system(thumbnail_command)
+			return destination
+		end
+
 		def process(contour_path, destination=nil)
 			raise Errno::ENOENT, "the file '#{contour_path}' does not exist" unless File.exists?(contour_path)
 			raise Errno::ENOENT, "the file '#{AVUtils.algo_binary}' does not exist" unless File.exists?(AVUtils.algo_binary)
@@ -131,6 +140,14 @@ module AVUtils
 			return video_to_process
 		end
 
+		def self.aerender(project_path, desintation)
+			raise Errno::ENOENT, "the file '#{project_path}' does not exist" unless File.exists?(project_path)
+			raise Errno::ENOENT, "the file '#{AVUtils.aerender_binary}' does not exist" unless File.exists?(AVUtils.aerender_binary)
 
+			aerender_command = AVUtils.aerender_binary + ' -project "' + project_path + '"' + ' -rqindex 1 -output "' + desintation + '"'
+			AVUtils.logger.info "aerender command: " + aerender_command
+			system(aerender_command)
+			return AVUtils::Video.new(destination)
+		end
 	end
 end

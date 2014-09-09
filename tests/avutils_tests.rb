@@ -1,11 +1,17 @@
 require '../video/AVUtils'
 
 require "test/unit"
+require 'os'
 
 class TestAVUtils < Test::Unit::TestCase
  
 	def setup
-		AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
+		if OS.windows?
+			AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
+		elsif OS.mac?
+			AVUtils.ffmpeg_binary = '/Users/tomer/Documents/ffmpeg/ffmpeg'
+		end
+				
 		@delete_files = Array.new
 		@delete_folder = nil	
 	end
@@ -148,6 +154,16 @@ class TestAVUtils < Test::Unit::TestCase
 
  		assert_equal(true, add_audio_video.audio?)
  		assert_equal('resources/no_audio-audio.mp4', add_audio_video.path)
+ 	end
+
+ 	def test_thumbnail_no_destination
+ 		video = AVUtils::Video.new('resources/360_right_side_up_audio.mov')
+
+ 		thumbnail = video.thumbnail(0)
+ 		@delete_files.push(thumbnail)
+
+ 		assert_equal('resources/360_right_side_up_audio.jpg', thumbnail)
+ 		assert_equal(true, File.exists?(thumbnail))
  	end
 
   	def teardown

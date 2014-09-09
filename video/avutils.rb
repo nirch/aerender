@@ -51,7 +51,7 @@ module AVUtils
 
   # Get the path to the algo binary, defaulting to 'UniformBackground.exe'
   #
-  # @return [String] the path to the ffmpeg binary
+  # @return [String] the path to the algo binary
   def self.algo_binary
     @algo_binary || 'UniformBackground.exe'
   end
@@ -69,5 +69,20 @@ module AVUtils
   # @return [String] the path to the algo params xml
   def self.algo_params
     @algo_params || 'params.xml'
+  end
+
+  # Set the path of the aerender binary.
+  #
+  # @param [String] path to the aerender binary
+  # @return [String] the path you set
+  def self.aerender_binary=(bin)
+    @aerender_binary = bin
+  end
+
+  # Get the path to the aerender binary, defaulting to 'aerender.exe'
+  #
+  # @return [String] the path to the aerender binary
+  def self.aerender_binary
+    @aerender_binary || 'aerender.exe'
   end
 end
