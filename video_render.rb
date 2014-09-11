@@ -8,6 +8,7 @@ require 'open-uri'
 require 'aws-sdk'
 require 'houston'
 require 'mini_exiftool'
+require 'gcm'
 
 configure do
 	# Global configuration (regardless of the environment)
@@ -30,6 +31,9 @@ configure do
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
 	AWS.config(aws_config)
+
+	# Google Cloud Messaging - Android Push Notification
+	set :gcm, GCM.new("AIzaSyBLZSS5D3k07As3GS2HXKc8aMqV8xh5KSQ")
 
 	# Logger
 
@@ -842,7 +846,7 @@ end
 def send_movie_ready_push_notification(story, remake)
 	user_id = remake["user_id"]
 	alert = "Your " + story["name"] + " movie is ready!"
-	custom_data = {type: PushNotifications::MovieReady, remake_id: remake["_id"].to_s, story_id: story["_id"].to_s}
+	custom_data = {type: PushNotifications::MovieReady, remake_id: remake["_id"].to_s, story_id: story["_id"].to_s, title:"Movie Ready!"}
 
 	send_push_notification_to_user(user_id, alert, custom_data)
 end
@@ -850,7 +854,7 @@ end
 def send_movie_timeout_push_notification(remake)
 	user_id = remake["user_id"]
 	alert = "Failed to create your movie, open the application and try again"
-	custom_data = {type: PushNotifications::MovieTimout, remake_id: remake["_id"].to_s, story_id: remake["story_id"].to_s}
+	custom_data = {type: PushNotifications::MovieTimout, remake_id: remake["_id"].to_s, story_id: remake["story_id"].to_s, title:"Movie Creation Failed"}
 
 	send_push_notification_to_user(user_id, alert, custom_data)
 end
@@ -870,12 +874,18 @@ def send_push_notification_to_user(user_id, alert, custom_data)
 	users = settings.db.collection("Users")
 	user = users.find_one(user_id)
 	for device in user["devices"] do
-		if device.has_key?("push_token")
+		if device.has_key?("push_token") then
 			token = device["push_token"]
 			if !token_used.include?(token) then
 				send_push_notification(token, alert, custom_data)
 				token_used.add(token)
 			end
+		elsif device.has_key?("android_push_token") then
+			token = device["android_push_token"]
+			if !token_used.include?(token) then
+				send_android_push_notification(token, alert, custom_data)
+				token_used.add(token)
+			end			
 		end
 	end
 end
@@ -887,6 +897,14 @@ def send_push_notification(device_token, alert, custom_data)
 	notification.custom_data = custom_data
 	notification.sound = "default"
 	APN.push(notification)	
+end
+
+def send_android_push_notification(device_token, alert, custom_data)
+	logger.info "Sending android push notification to device token: " + device_token.to_s + " with alert: " + alert + " with custom_data: " + custom_data.to_s
+	tokens = [device_token]
+	custom_data[:text] = alert
+	data = {data: custom_data}
+	gcm.send(tokens, data)
 end
 
 
