@@ -1,7 +1,8 @@
 require 'houston'
 require 'gcm'
-require 'homage_push_client'
-require 'homage_push_types'
+require_relative 'homage_push_client'
+require_relative 'homage_push_types'
+require 'logger'
 
 module HomagePush
 
@@ -20,7 +21,7 @@ module HomagePush
   def self.logger
     return @logger if @logger
     logger = Logger.new(STDOUT)
-    logger.level = Logger::INFO
+    logger.level = Logger::DEBUG
     @logger = logger
   end
 

@@ -2,6 +2,7 @@ require 'sinatra'
 require 'aws-sdk'
 require 'mongo'
 require_relative 'video/AVUtils'
+require_relative 'utils/push/Homage_Push'
 
 configure do
 	# Global configuration (regardless of the environment)
@@ -12,6 +13,8 @@ configure do
 	set :output_folder, "Z:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
 	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
 	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
+	set :cdn_folder, "Z:/CDN/"
+
 
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
@@ -21,6 +24,7 @@ configure do
 	set :render_uri, URI.parse(render_url)
 
 	AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
+	AVUtils.aerender_binary = 'C:/Program Files/Adobe/Adobe After Effects CC/Support Files/aerender.exe'
 end
 
 configure :development do
@@ -37,9 +41,13 @@ configure :development do
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
 
-	# in debug logging into the console
+	# in development logging into the console
 	set :logging, Logger::DEBUG
 	AVUtils.logger = ENV['rack.logger']
+
+	# Setting the push client
+	set :push_client, HomagePush::Client.development
+	HomagePush.logger = ENV['rack.logger']
 end
 
 configure :test do
@@ -58,6 +66,8 @@ configure :test do
 
 	set :share_link_prefix, "http://homage-server-app-dev.elasticbeanstalk.com/play/"
 
+	# Setting the push client
+	set :push_client, HomagePush::Client.production
 
 	set :logging, Logger::DEBUG
 
@@ -87,6 +97,8 @@ configure :production do
 
 	set :share_link_prefix, "http://play.homage.it/"
 
+	# Setting the push client
+	set :push_client, HomagePush::Client.production
 
 	set :logging, Logger::INFO
 
@@ -188,10 +200,35 @@ post '/render' do
 	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration, grade:-1}})
 	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
+	# Push notification for video ready
+	user = settings.db.collection("Users").find_one(remake["user_id"])
+	HomagePush.push_video_ready(story, remake, user, settings.push_client)
 
+	cdn_local_path = settings.cdn_folder + output_file_name
+	logger.info "downloading the just created video to update CDN cache"
+	download_from_url(video_cdn_url, cdn_local_path)
+	logger.info "Now deleting the file that was downloaded for cache"
+	FileUtils.remove_file(cdn_local_path)
+
+	update_story_remakes_count(story["_id"])
 end
 
+def update_story_remakes_count(story_id)
+	remakes = settings.db.collection("Remakes")
+	stories = settings.db.collection("Stories")
 
+	# Getting the number of remakes for this story
+	story_remakes = remakes.count({query: {story_id: story_id, share_link: {"$exists" => true}}})
+
+	stories.update({_id: story_id}, {"$set" => {"remakes_num" => story_remakes}})
+	logger.info "Updated story id <" + story_id.to_s + "> number of remakes to " + story_remakes.to_s
+end
+
+def download_from_url (url, local_path)
+	File.open(local_path, 'wb') do |file|
+		file << open(url).read
+    end	
+end
 
 def download_from_s3 (s3_key, local_path)
 	s3 = AWS::S3.new

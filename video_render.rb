@@ -837,7 +837,7 @@ def render_video (remake_id)
 	cdn_local_path = settings.cdn_folder + output_file_name
 	logger.info "downloading the just created video to update CDN cache"
 	download_from_url(video_cdn_url, cdn_local_path)
-	logger.info "Now deleting it the file that was downloaded for cache"
+	logger.info "Now deleting the file that was downloaded for cache"
 	FileUtils.remove_file(cdn_local_path)
 
 	update_story_remakes_count(remake["story_id"])
