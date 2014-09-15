@@ -904,7 +904,9 @@ def send_android_push_notification(device_token, alert, custom_data)
 	tokens = [device_token]
 	custom_data[:text] = alert
 	data = {data: custom_data}
-	gcm.send(tokens, data)
+	logger.debug "Sending tokens = " + tokens.to_s + "; data = " + data.to_s
+	push_response = settings.gcm.send(tokens, data)
+	logger.debug push_response
 end
 
 

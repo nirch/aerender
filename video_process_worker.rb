@@ -310,3 +310,6 @@ def is_latest_take(remake, scene_id, take_id)
 		return true
 	end
 end
+
+# This method checks the set of rules if the current
+#def handle_
