@@ -899,6 +899,13 @@ def send_push_notification(device_token, alert, custom_data)
 	APN.push(notification)	
 end
 
+get '/test/android/push' do
+	token = "APA91bE4MZmyhKWNiYyecfa8r0cHzai6KGv_LJTz59mdWlCFUQ_Y6fIu9U3V0myH7yfKWL3qr_ru8f4xkThOVsTtbbaSFwiZpBryF6zy9At4h3Q7ySQQEbKQMfH1PXYzJwm_HykxTltsHZDaykGNZj5c6Fv3TFKtyw"
+	data = {type: 0, title: "Video is Ready!", remake_id: "5415863ab8fef16bc5000012", story_id: "53ce9bc405f0f6e8f2000655"}
+	message = "Your Street Fighter Video is Ready!"
+	send_android_push_notification(token, message, data)
+end
+
 def send_android_push_notification(device_token, alert, custom_data)
 	logger.info "Sending android push notification to device token: " + device_token.to_s + " with alert: " + alert + " with custom_data: " + custom_data.to_s
 	tokens = [device_token]
