@@ -77,7 +77,7 @@ configure :test do
 	APN.passphrase = "homage"
 
 
-	set :share_link_prefix, "http://homage-server-app-test-nuskncpdiu.elasticbeanstalk.com/play/"
+	set :share_link_prefix, "http://play-test.homage.it/"
 
 	set :logging, Logger::DEBUG
 end	

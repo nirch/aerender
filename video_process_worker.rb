@@ -15,7 +15,7 @@ configure do
 	set :process_footage_uri, URI.parse(process_footage_url)
 
 	AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
-	AVUtils.algo_binary = 'C:/Development/Algo/v-14-08-12/UniformMattingCA.exe'
+	AVUtils.algo_binary = 'C:/Development/Algo/v-14-09-29/UniformMattingCA.exe'
 	AVUtils.algo_params = 'C:/Development/Algo/params.xml'
 
 	# Another logging option...
@@ -113,6 +113,19 @@ module FootageStatus
   Processing = 2
   Ready = 3
 end
+
+module RemakeStatus
+  New = 0
+  InProgress = 1
+  Rendering = 2
+  Done = 3
+  Timeout = 4
+  Deleted = 5
+  PendingScenes = 6
+  PendingQueue = 7
+  Failed = 8
+end
+
 
 PARALLEL_PROCESS_NUM = 3
 
@@ -227,6 +240,8 @@ post '/process' do
 		logger.info "not updating the DB to status ready since this is not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 	end
 
+	#handle_send_to_render_queue(remake_id)
+
 	# Deleting the folder after everything was updated successfully
 	logger.info "Deleting temp folder: " + @process_folder
 	FileUtils.remove_dir(@process_folder, true)
@@ -311,5 +326,11 @@ def is_latest_take(remake, scene_id, take_id)
 	end
 end
 
-# This method checks the set of rules if the current
-#def handle_
+# This method checks the set of rules if the current remake is ready to be sent to the render queue
+	# 1. User clicked on "Create Movie" (status of remake is pending for queue)
+	# 2. All scenes are processed
+def handle_send_to_render_queue(remake_id)
+	remake = settings.collection("Remakes").find_one(remake_id)
+
+	return unless remake["status"]
+end
