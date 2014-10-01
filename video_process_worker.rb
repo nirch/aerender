@@ -39,6 +39,10 @@ configure :development do
 	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueueTest"
     set :process_footage_queue, AWS::SQS.new.queues[process_footage_queue_url]
 
+	# Process Render Queue
+	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
+    set :render_queue, AWS::SQS.new.queues[render_queue_url]
+
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
@@ -59,6 +63,10 @@ configure :test do
 	# Process Footage Queue
 	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueueTest"
     set :process_footage_queue, AWS::SQS.new.queues[process_footage_queue_url]
+
+	# Process Render Queue
+	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
+    set :render_queue, AWS::SQS.new.queues[render_queue_url]
 
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
@@ -87,6 +95,10 @@ configure :production do
 	# Process Footage Queue
 	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueue"
     set :process_footage_queue, AWS::SQS.new.queues[process_footage_queue_url]
+
+	# Process Render Queue
+	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueue"
+    set :render_queue, AWS::SQS.new.queues[render_queue_url]
 
     # DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
@@ -327,10 +339,31 @@ def is_latest_take(remake, scene_id, take_id)
 end
 
 # This method checks the set of rules if the current remake is ready to be sent to the render queue
-	# 1. User clicked on "Create Movie" (status of remake is pending for queue)
+	# 1. User clicked on "Create Movie" (status of remake is pending for scenes to complete)
 	# 2. All scenes are processed
 def handle_send_to_render_queue(remake_id)
 	remake = settings.collection("Remakes").find_one(remake_id)
 
-	return unless remake["status"]
+	# Resturns if the user didn't press on "Create Movie"
+	return unless remake["status"] == RemakeStatus::PendingScenes
+
+	scenes_number = remake["footages"].count
+	scenes_ready = 0
+	for footage in remakes["footages"] do
+		if footage["status"] == FootageStatus::Ready then
+			scenes_ready += 1
+		end
+	end
+
+	# Returns if not all scenes are ready
+	return unless scenes_ready == scenes_number
+
+	# Got here?! - Send render to queue!
+	message = {remake_id: remake_id.to_s}
+	settings.render_queue.send_message(message.to_json)
+
+	# Update the DB that the remake is in the render queue
+	remakes = settings.db.collection("Remakes")
+	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::PendingQueue}})
+
 end
