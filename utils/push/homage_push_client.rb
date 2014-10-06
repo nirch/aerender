@@ -3,7 +3,7 @@ module HomagePush
 	class Client
 		# apn (Apple Push Notification)
 		# gcm (Google Cloud Messaging)
-		attr_accessor :apn, :gcm 
+		attr_accessor :apn, :gcm, :apn_new
 
 		class << self
 			def development
@@ -30,6 +30,11 @@ module HomagePush
 				client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod.pem", __FILE__))
 				client.apn.passphrase = "homage"
 
+				# Apple Push Notification - For new client (version 1.5.0 and up)
+				client.apn_new = Houston::Client.production
+				client.apn_new.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod_150.pem", __FILE__))
+				client.apn_new.passphrase = "homage"
+
 				client
 			end
 	    end
@@ -41,6 +46,7 @@ module HomagePush
 			notification.custom_data = data
 			notification.sound = "default"
 			@apn.push(notification)	
+			@apn_new.push(notification)
 	    end
 
 	    def push_android(token, message ,data)

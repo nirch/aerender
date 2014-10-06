@@ -59,6 +59,10 @@ configure :production do
 	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_prod.pem", __FILE__))
 	APN.passphrase = "homage"
 
+	APN_NEW = Houston::Client.production
+	APN_NEW.certificate = File.read(File.expand_path("../certificates/homage_push_notification_prod_150.pem", __FILE__))
+	APN_NEW.passphrase = "homage"
+
 	set :share_link_prefix, "http://play.homage.it/"
 
 	set :logging, Logger::INFO
@@ -76,6 +80,9 @@ configure :test do
 	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_prod.pem", __FILE__))
 	APN.passphrase = "homage"
 
+	APN_NEW = Houston::Client.production
+	APN_NEW.certificate = File.read(File.expand_path("../certificates/homage_push_notification_prod_150.pem", __FILE__))
+	APN_NEW.passphrase = "homage"
 
 	set :share_link_prefix, "http://play-test.homage.it/"
 
@@ -896,7 +903,8 @@ def send_push_notification(device_token, alert, custom_data)
 	notification.alert = alert
 	notification.custom_data = custom_data
 	notification.sound = "default"
-	APN.push(notification)	
+	APN.push(notification)
+	APN_NEW.push(notification)
 end
 
 get '/test/android/push' do

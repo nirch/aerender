@@ -15,7 +15,7 @@ configure do
 	set :process_footage_uri, URI.parse(process_footage_url)
 
 	AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
-	AVUtils.algo_binary = 'C:/Development/Algo/v-14-09-29/UniformMattingCA.exe'
+	AVUtils.algo_binary = 'C:/Development/Algo/v-14-10-01/UniformMattingCA.exe'
 	AVUtils.algo_params = 'C:/Development/Algo/params.xml'
 
 	# Another logging option...
@@ -136,6 +136,7 @@ module RemakeStatus
   PendingScenes = 6
   PendingQueue = 7
   Failed = 8
+  ClientRequestedDeletion = 9
 end
 
 

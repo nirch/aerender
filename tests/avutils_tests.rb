@@ -86,6 +86,17 @@ class TestAVUtils < Test::Unit::TestCase
  		assert_equal('resources/480-cropped.mp4', cropped_360_video.path)
  	end
 
+ 	def test_crop_video_with_frame_rate_issue
+		video_480 = AVUtils::Video.new('resources/crop_issue.mov')
+
+ 		cropped_360_video = video_480.crop(640,360)		
+		@delete_files.push(cropped_360_video.path)
+
+ 		assert_equal("640x360", cropped_360_video.resolution)
+ 		assert_equal('resources/crop_issue-cropped.mp4', cropped_360_video.path)
+ 		assert_equal(video_480.frame_rate, cropped_360_video.frame_rate)
+ 	end
+
  	def test_video_to_frames
 		video_83_frames = AVUtils::Video.new('resources/upside_down.mov')
 		frame_rate = video_83_frames.frame_rate

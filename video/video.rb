@@ -42,9 +42,10 @@ module AVUtils
 
 		def resize(width, height, destination=nil)
 			destination = File.join(File.dirname(@path), File.basename(@path,".*") + "-resized.mp4") unless destination
+			frame_rate = self.frame_rate
 
 			# ffmpeg -i "resources/720.mp4" -vf scale=640:360 -y "resources/360_from_720.mp4"
-			resize_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf scale=' + width.to_s + ':' + height.to_s + ' -strict -2 -y "' + destination + '"'
+			resize_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf scale=' + width.to_s + ':' + height.to_s + ' -r ' + frame_rate.to_s + ' -strict -2 -y "' + destination + '"'
 			AVUtils.logger.info "resize video command: " + resize_command
 			system(resize_command)
 			return AVUtils::Video.new(destination)
@@ -52,9 +53,10 @@ module AVUtils
 
 		def crop(width, height, destination=nil)
 			destination = File.join(File.dirname(@path), File.basename(@path,".*") + "-cropped.mp4") unless destination
+			frame_rate = self.frame_rate
 
 			# ffmpeg -i "resources/480.mov" -vf crop=640:360 -y "resources/360_from_480.mp4"
-			crop_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf crop=' + width.to_s + ':' + height.to_s + ' -strict -2 -y "' + destination + '"'
+			crop_command = AVUtils.ffmpeg_binary + ' -i "' + @path + '" -vf crop=' + width.to_s + ':' + height.to_s + ' -r ' + frame_rate.to_s + ' -strict -2 -y "' + destination + '"'
 			AVUtils.logger.info "crop video command: " + crop_command
 			system(crop_command)
 			return AVUtils::Video.new(destination)
