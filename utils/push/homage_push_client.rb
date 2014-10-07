@@ -16,6 +16,11 @@ module HomagePush
 				client.apn = Houston::Client.development
 				client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_dev.pem", __FILE__))
 
+				# Apple Push Notification - For new client (version 1.5.0 and up)
+				client.apn_new = Houston::Client.production
+				client.apn_new.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod_150.pem", __FILE__))
+				client.apn_new.passphrase = "homage"
+
 				client
 			end
 

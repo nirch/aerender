@@ -67,7 +67,7 @@ configure :test do
 	set :share_link_prefix, "http://homage-server-app-dev.elasticbeanstalk.com/play/"
 
 	# Setting the push client
-	set :push_client, HomagePush::Client.production
+	set :push_client, HomagePush::Client.development
 
 	set :logging, Logger::DEBUG
 

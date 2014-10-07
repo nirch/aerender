@@ -74,11 +74,8 @@ configure :test do
 	set :db, db_connection.db()
 
 	# Push notification certificate
-	# APN = Houston::Client.development
-	# APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_dev.pem", __FILE__))
-	APN = Houston::Client.production
-	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_prod.pem", __FILE__))
-	APN.passphrase = "homage"
+	APN = Houston::Client.development
+	APN.certificate = File.read(File.expand_path("../certificates/homage_push_notification_dev.pem", __FILE__))
 
 	APN_NEW = Houston::Client.production
 	APN_NEW.certificate = File.read(File.expand_path("../certificates/homage_push_notification_prod_150.pem", __FILE__))
