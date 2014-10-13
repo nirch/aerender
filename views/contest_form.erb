@@ -1,0 +1,31 @@
+
+
+<form id="myForm" action="/form" method="post" enctype="multipart/form-data">
+    <input type="text" name="first_name" placeholder="First Name" required>
+    <input type="text" name="last_name" placeholder="Last Name" required>
+    <input type="text" name="email" placeholder="Email" required>
+    <input type="text" name="country" placeholder="Country" required>
+	<textarea name="address" rows="3" cols="25" placeholder="Address" required></textarea>
+	<input placeholder="Birth Date" class="textbox-n" type="text" onfocus="(this.type='date')"  name="birth_date" required>
+    <select name="gender" required>
+      <option value="" disabled selected>Select your gender</option>
+	  <option value="male">Male</option>
+	  <option value="female">Female</option>
+	</select>
+	<textarea name="about_submission" rows="5" cols="25" placeholder="Tell us about your submission.." required></textarea>
+    <input type="text" name="profession" placeholder="Profession (optional)">	
+	<textarea name="feedback" rows="3" cols="25" placeholder="General feedback (optional)"></textarea>
+	<br>
+	<label>After Effects Project:</label>
+    <input type="file" name="file" required>
+    <br>
+    <label>By submitting this form I agree to the <a href="https://docs.google.com/a/homage.it/document/d/1QHXZJ_UMRWU184w4vX9wJr53m-ucStOpnTGDa4iirP0/edit?usp=sharing" target="_blank">terms</a></label>
+    <input type="submit" value="Submit">
+</form>
+
+<style>
+ input, textarea, select, label { display:block; margin: 10px; }
+ input[type="text"] {
+    width: 150px;
+	}
+</style>
