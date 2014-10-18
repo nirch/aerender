@@ -27,6 +27,15 @@ configure do
 
 	# Setting MixPanel
 	set :mixpanel, Mixpanel::Tracker.new("7d575048f24cb2424cd5c9799bbb49b1")
+
+    # Logging to file
+    set :logging, Logger::DEBUG
+    logging_dir = File.dirname(File.expand_path(__FILE__)) + "/logs"
+    FileUtils.mkdir logging_dir unless File.directory?(logging_dir)
+    log_file = File.new(logging_dir + '/contest.log', "a+")
+    log_file.sync = true
+    $stdout.reopen(log_file)
+    $stderr.reopen(log_file)
 end
 
 get '/' do
