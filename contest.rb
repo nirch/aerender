@@ -48,6 +48,8 @@ get '/form' do
 end
 
 post '/form' do
+    logger.info "input = " + params.to_s
+    
     first_name = params[:first_name]
     last_name = params[:last_name]
     email = params[:email]
