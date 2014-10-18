@@ -1,0 +1,368 @@
+
+
+.container-fluid
+{
+	/*background-image: url("/resources/testBG.png");*/
+}
+
+@font-face {
+font-family: "bryant-web-compressed";
+src: url("/resources/Bryant-MediumCompressed.otf") format("opentype");
+font-size: 14px
+}
+
+@font-face {
+font-family: "proxima-nova";
+src: url("/resources/ProximaNova-Light.otf") format("opentype");
+font-size: 14px
+}
+
+#myForm input 
+{
+	font-size: 14px
+}
+
+#myForm textarea
+{
+	font-size: 14px
+}
+
+.top  {
+	border-bottom: 2px solid #434343;
+    height: 100%;
+    margin: 0 auto;
+    padding: 20px 0;
+ }
+
+.right-margin {
+	margin-right: 30px !important
+}
+
+.left-side {
+	border-right: 2px solid #434343;
+}
+
+.upper_spacer {
+	height: 80px;
+}
+
+.bottom_spacer {
+	height: 15px;
+}
+
+.shareContainer
+{
+	margin: 0 auto;
+}
+
+
+
+.filler
+{
+	height: 100%;
+	/*background-color: purple;*/
+}
+/*.share-button.sharer-0 label {
+  -webkit-transition: all .3s ease;
+  transition:         all .3s ease;
+  background: #a29baa;
+  border-radius: 5px;
+  color: #333;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 0;
+  padding: 5px 10px;
+}*/
+
+#menu { 
+	margin:0 auto;
+	/*width: 335px; */
+	float: right;
+	font-family: "bryant-web-compressed";
+	font-style: normal; font-weight: 500;
+	text-transform: uppercase;
+	padding: 5px 0 !important;
+	position: relative; z-index: 999;
+	height: 59px;
+	white-space: nowrap;
+}
+
+#menu_full_row { 
+	margin:30px auto;
+	/*width: 335px; */
+	font-family: "bryant-web-compressed";
+	font-style: normal; font-weight: 500;
+	text-transform: uppercase;
+	padding: 0px 0px 0px 15px !important;
+	position: relative; z-index: 999;
+	height: 59px;
+	white-space: nowrap;
+}
+
+#menu ul {list-style-type: none; margin: 0 0 0 23px; padding: 0;}
+
+#menu ul li {  
+	display: inline-block;
+	float: left;
+	padding: 0;
+	margin-left: 17px;
+	position: relative;
+	z-index: 100;
+}
+
+.commentContainer {
+	height: 300px;
+	background-color: green;
+}
+
+.rafiContainer {
+	height: 300px;
+	background-color: blue;
+}
+
+/*MediaElement*/
+/*.mejs-container {
+  width: 100% !important;
+  height: auto !important;
+  padding-top: 57%;
+}
+.mejs-overlay, .mejs-poster {
+  width: 100% !important;
+  height: 100% !important;
+}
+.mejs-mediaelement video {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+/*.mejs-mediaelement object {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+}*/
+/*.video-js-wrapper {max-width: 740px;}*/
+/*#myvideo, #mep_0, #myvideo_wrapper{margin: 0 auto;}*/
+.video-container {
+	position:relative;
+	padding-bottom:56.25%;
+	padding-top:30px;
+	height:0;
+	overflow:hidden;
+}
+
+.video-container iframe, .video-container object, .video-container embed {
+	position:absolute;
+	top:0;
+	left:0;
+	width:100%;
+	height:100%;
+}
+
+
+
+.vimeovideowrap, .content, .youtubevideowrap, #disqus_thread, .videocontent {
+	width:100%;
+	max-width: 640px;
+	margin: 0 auto;
+}
+.videocontent2 {
+
+	min-width: 230px;
+
+}
+.content {
+	margin-bottom: 100px;
+}
+markup, mark {
+background: #f9f8d4;
+padding: 1px;
+}
+.socialmedia {
+	margin: 60px auto;
+	overflow: hidden;
+	width:76%;
+}
+.socialmedia div{
+	margin-left: 30px;
+	display: inline-block;
+}
+.socialmedia div:last-child{
+	margin-left: 0px;
+	display: inline-block;
+}
+
+img {
+	max-width: 101%;
+	/*box-shadow: 2px 2px 10px #999;*/
+}
+/*IE9 for VFE*/
+video{
+width:100%;
+height:100%}
+/*VFE Flash Fallback*/
+ 
+/*JWPLAYER*/
+/*#myvideo5_wrapper{
+	margin: 0 auto;
+}*/
+/*#myvideo5_wrapper {
+
+    padding-bottom: 56.25%;
+        width: 100%;
+    position: relative;
+    padding: 0;
+}
+ 
+#myvideo5_wrapper object {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}*/
+
+html {
+	height: 100%;
+	width: 100%;
+}
+
+body {
+	background: #000000;
+	color:#5f5f5f;
+	padding:0;
+	margin:0;
+	height: 100%;
+	width: 100%;
+	font-size: 22px;
+	font-family:  "proxima-nova", "helvetica", Arial, sans;
+	font-weight: 400;
+	font-style: normal; 
+	overflow-x: hidden;
+    
+}
+
+.blurBG {
+	height: 100%;
+	width: 100%;
+	
+	position: absolute;
+    left:0;
+    top: 0;
+
+    /*background-image: url("/resources/siteBG.svg");*/
+	background-repeat: no-repeat;
+	background-size: 100% 100%;
+
+    -webkit-filter: blur(4px);
+    -moz-filter: blur(4px);
+    -o-filter: blur(4px);
+    -ms-filter: blur(4px);
+    filter: url("/resources/blur.svg#blur");
+}
+
+.video_player_container {
+	display: inline-block;
+	width: 100%;
+}
+
+.video_player_container h1 {
+	padding: 3px 0px 0px 10px;
+}
+
+/*WebKit Browser*/
+/*
+@media screen and (-webkit-min-device-pixel-ratio:0) { 
+
+
+}
+*/
+
+/*Tablet & Mobile*/
+/*
+@media only screen and (max-width:480px) {
+	p, li {font-size: .8rem;}
+	p {text-align: left;}
+	h1 {font-size: 2.25rem;}
+	h2 {font-size: 1.25rem;}
+	.vimeovideowrap, .content, .youtubevideowrap, #disqus_thread, .socialmedia {width:100%;}
+	.wrapper {border: solid 1.25rem #fff;}
+	.socialmedia div{margin-left: 0px;}
+	.socialmedia div+div{margin-left: 9px;}
+	.socialmedia div:last-child{margin-left: -25px;}
+}
+@media only screen and (min-width:481px) and (max-width:768px) {
+	p, li {font-size: .9rem;}
+	h1 {font-size: 2.5rem;}
+	h2 {font-size: 1.75rem;}
+}
+@media all and (device-width: 768px) and (device-height: 1024px) and (orientation:portrait) {
+  .ipad-portrait { height: 290px; }
+}
+@media all and (device-width: 768px) and (device-height: 1024px) and (orientation:landscape) {
+  .ipad-landscape { height: 360px;} 
+
+@media only screen and (min-width:769px) {}
+*/
+
+
+/* Large desktops and laptops */
+@media (min-width: 1200px) {
+
+}
+
+/* Portrait tablets and medium desktops */
+@media (min-width: 992px) and (max-width: 1199px) {
+
+}
+
+@media (max-height: 640px) {
+	.upper_spacer {
+		height: 5px;
+	}
+
+	.bottom_spacer {
+		height: 5px;
+	}
+}
+
+/* Portrait tablets and small desktops */
+@media (min-width: 768px) and (max-width: 991px) {
+	
+
+}
+
+/* Landscape phones and portrait tablets */
+@media (max-width: 767px) {
+	.left-side {
+		border-right: none;
+	}
+
+	.top {
+		padding: 5px 5px 10px 15px;
+		border-bottom: none;
+		text-align: left;
+	}
+
+	.logo {
+		height: 46px;
+		width: 147px;
+	}
+
+	.remake_description_header {
+		font-size: 26px;
+	}
+
+	.remake_description_body {
+		font-size: 14px;
+	}
+
+}
+
+/* Landscape phones and smaller */
+@media (max-width: 480px) {
+	
+}
+
+
