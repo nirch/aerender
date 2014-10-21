@@ -146,10 +146,10 @@ module AVUtils
 			raise Errno::ENOENT, "the file '#{project_path}' does not exist" unless File.exists?(project_path)
 			raise Errno::ENOENT, "the file '#{AVUtils.aerender_binary}' does not exist" unless File.exists?(AVUtils.aerender_binary)
 
-			aerender_command = AVUtils.aerender_binary + ' -project "' + project_path + '"' + ' -rqindex 1 -output "' + desintation + '"'
+			aerender_command = '"' + AVUtils.aerender_binary + '" -project "' + project_path + '"' + ' -rqindex 1 -output "' + desintation + '"'
 			AVUtils.logger.info "aerender command: " + aerender_command
 			system(aerender_command)
-			return AVUtils::Video.new(destination)
+			return AVUtils::Video.new(desintation)
 		end
 	end
 end
