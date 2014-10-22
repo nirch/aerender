@@ -133,9 +133,9 @@ module RemakeStatus
   Done = 3
   Timeout = 4
   Deleted = 5
-  PendingScenes = 6
-  PendingQueue = 7
-  Failed = 8
+  PendingScenes = 6 			# Waiting for all the scenes to be processed (user requested for a video)
+  PendingQueue = 7 				# Waiting in the SQS to be processed
+  Failed = 8					# Something went wrong
   ClientRequestedDeletion = 9
 end
 

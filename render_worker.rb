@@ -32,10 +32,13 @@ configure :development do
 	disable :raise_errors
 
 	# Setting folders
+	set :ae_projects_folder, "C:/Users/Channes/Documents/AE Projects/"
+	set :output_folder, "C:/Development/Homage/After/Ouput/"
+	set :cdn_folder,  "C:/Development/Homage/After/CDN/"
 
 	# Process Footage Queue
-	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
-    set :render_queue, AWS::SQS.new.queues[render_queue_url]
+	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
+    set :render_queue, AWS::SQS.new.queues[settings.render_queue_url]
 
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
@@ -57,8 +60,8 @@ configure :test do
 	# Setting folders
 
 	# Process Footage Queue
-	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
-    set :render_queue, AWS::SQS.new.queues[render_queue_url]
+	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
+    set :render_queue, AWS::SQS.new.queues[settings.render_queue_url]
 
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
@@ -88,8 +91,8 @@ configure :production do
 	# Setting folders
 
 	# Process Footage Queue
-	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueue"
-    set :render_queue, AWS::SQS.new.queues[render_queue_url]
+	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueue"
+    set :render_queue, AWS::SQS.new.queues[settings.render_queue_url]
 
     # DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
@@ -109,6 +112,19 @@ configure :production do
   	log_file.sync = true
  	$stdout.reopen(log_file)
   	$stderr.reopen(log_file)
+end
+
+module RemakeStatus
+  New = 0
+  InProgress = 1
+  Rendering = 2
+  Done = 3
+  Timeout = 4
+  Deleted = 5
+  PendingScenes = 6 			# Waiting for all the scenes to be processed (user requested for a video)
+  PendingQueue = 7 				# Waiting in the SQS to be processed
+  Failed = 8					# Something went wrong
+  ClientRequestedDeletion = 9
 end
 
 PARALLEL_PROCESS_NUM = 1
@@ -152,65 +168,89 @@ for i in 1..PARALLEL_PROCESS_NUM do
 	end
 end
 
+get '/test/settings' do
+	settings.ae_projects_folder
+end
+
 post '/render' do
-	# input
-	remake_id = BSON::ObjectId.from_string(params[:remake_id])
+	begin
+		# input
+		remake_id = BSON::ObjectId.from_string(params[:remake_id])
 
-	logger.info "Starting the rendering of remake " + remake_id.to_s
+		remakes = settings.db.collection("Remakes")
 
-	# Getting the remake and story to render
-	remakes = settings.db.collection("Remakes")
-	remake = remakes.find_one(remake_id)
-	story = settings.db.collection("Stories").find_one(remake["story_id"])
+		# Logging and updating the DB that the rendering has started
+		logger.info "Starting the rendering of remake " + remake_id.to_s
+		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Rendering}})
 
-	# Getting the AE project details
-	story_folder = story["after_effects"][remake["resolution"]]["folder"]
-	story_project = story["after_effects"][remake["resolution"]]["project"]
+		# Getting the remake and story to render
+		remake = remakes.find_one(remake_id)
+		story = settings.db.collection("Stories").find_one(remake["story_id"])
 
-	# copying all videos to after project (downloading them from s3)
-	for scene in story["after_effects"]["scenes"] do
-		processed_video_s3_key = remake["footages"][scene["id"] - 1]["processed_video_s3_key"]
-		destination = settings.aeProjectsFolder + story_folder + "/(Footage)/" + scene["file"]
-		download_from_s3 processed_video_s3_key, destination
+		# Getting the AE project details
+		story_folder = story["after_effects"][remake["resolution"]]["folder"]
+		story_project = story["after_effects"][remake["resolution"]]["project"]
+
+		# copying all videos to after project (downloading them from s3)
+		for scene in story["after_effects"]["scenes"] do
+			processed_video_s3_key = remake["footages"][scene["id"] - 1]["processed_video_s3_key"]
+			destination = settings.ae_projects_folder + story_folder + "/(Footage)/" + scene["file"]
+			download_from_s3 processed_video_s3_key, destination
+		end
+
+		# Rendering the video with AE
+		ae_project_path = settings.ae_projects_folder + story_folder + "/" + story_project
+		output_file_name = story["name"] + "_" + remake_id.to_s + ".mp4"
+		output_path = settings.output_folder + output_file_name
+		rendered_video = AVUtils::Video.aerender(ae_project_path, output_path)
+
+		# Creating a thumbnail from the video
+		thumbnail_path = rendered_video.thumbnail(story["thumbnail_rip"])
+
+		# Uploading the movie and thumbnail to S3
+		video_s3_key = remake["video_s3_key"]
+		thumbnail_s3_key = remake["thumbnail_s3_key"]
+		s3_object_video = upload_to_s3 rendered_video.path, video_s3_key, :public_read, 'video/mp4'
+		s3_object_thumbnail = upload_to_s3 thumbnail_path, thumbnail_s3_key, :public_read
+
+		# Updating the DB: remake statue, share link, render duration, video and thumbnail URLs
+		share_link = settings.share_link_prefix + remake_id.to_s
+		video_cdn_url = s3_object_video.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
+		thumbnail_cdn_url = s3_object_thumbnail.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
+		render_end = Time.now
+		if remake["render_start"] then
+			render_duration = render_end - remake["render_start"]
+		end
+		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration, grade:-1}})
+		logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
+
+		# Push notification for video ready
+		user = settings.db.collection("Users").find_one(remake["user_id"])
+		HomagePush.push_video_ready(story, remake, user, settings.push_client)
+
+		cdn_local_path = settings.cdn_folder + output_file_name
+		logger.info "downloading the just created video to update CDN cache"
+		download_from_url(video_cdn_url, cdn_local_path)
+		logger.info "Now deleting the file that was downloaded for cache"
+		FileUtils.remove_file(cdn_local_path)
+
+		update_story_remakes_count(story["_id"])
+
+		return 200
+	rescue => error	
+		# log the error
+		logger.error error.to_s
+		logger.error error.backtrace.join("\n")
+
+		# update DB that remake failed + clear visibility timout (ChangeMessageVisibility)
+		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
+		#AWS::SQS::Client.change_message_visibility({:queue_url => settings.render_queue_url, :receipt_handle => handle, :visibility_timeout => 0})
+
+		# Push notification error
+		HomagePush.push_video_timeout(remake, user, settings.push_client)
+
+		# mail the error
 	end
-
-	# Rendering the video with AE
-	ae_project_path = settings.ae_projects_folder + story_folder + "/" + story_project
-	output_file_name = story["name"] + "_" + remake_id.to_s + ".mp4"
-	output_path = settings.output_folder + output_file_name
-	rendered_video = AVUtils::Video.aerender(ae_project_path, output_path)
-
-	# Creating a thumbnail from the video
-	thumbnail_path = rendered_video.thumbnail(story["thumbnail_rip"])
-
-	# Uploading the movie and thumbnail to S3
-	video_s3_key = remake["video_s3_key"]
-	thumbnail_s3_key = remake["thumbnail_s3_key"]
-	s3_object_video = upload_to_s3 rendered_video.path, video_s3_key, :public_read, 'video/mp4'
-	s3_object_thumbnail = upload_to_s3 thumbnail_path, thumbnail_s3_key, :public_read
-
-	# Updating the DB: remake statue, share link, render duration, video and thumbnail URLs
-	share_link = settings.share_link_prefix + remake_id.to_s
-	video_cdn_url = s3_object_video.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
-	thumbnail_cdn_url = s3_object_thumbnail.public_url.to_s.sub(settings.s3_bucket_path, settings.cdn_path)
-	render_end = Time.now
-	if remake["render_start"] then
-		render_duration = render_end - remake["render_start"]
-	end
-	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration, grade:-1}})
-	logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
-
-	# Push notification for video ready
-	user = settings.db.collection("Users").find_one(remake["user_id"])
-	HomagePush.push_video_ready(story, remake, user, settings.push_client)
-
-	cdn_local_path = settings.cdn_folder + output_file_name
-	logger.info "downloading the just created video to update CDN cache"
-	download_from_url(video_cdn_url, cdn_local_path)
-	logger.info "Now deleting the file that was downloaded for cache"
-	FileUtils.remove_file(cdn_local_path)
-
-	update_story_remakes_count(story["_id"])
 end
 
 def update_story_remakes_count(story_id)
