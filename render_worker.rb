@@ -4,6 +4,7 @@ require 'mongo'
 require_relative 'video/AVUtils'
 require_relative 'utils/push/Homage_Push'
 require 'mail'
+require 'open-uri'
 
 configure do
 	# Global configuration (regardless of the environment)
@@ -180,9 +181,6 @@ for i in 1..PARALLEL_PROCESS_NUM do
 	end
 end
 
-get '/test/settings' do
-	settings.ae_projects_folder
-end
 
 post '/render' do
 	begin
@@ -198,6 +196,7 @@ post '/render' do
 		remake = remakes.find_one(remake_id)
 		story = settings.db.collection("Stories").find_one(remake["story_id"])
 		user = settings.db.collection("Users").find_one(remake["user_id"])
+		environment = settings.environment.to_s
 
 		# Getting the AE project details
 		story_folder = story["after_effects"][remake["resolution"]]["folder"]
@@ -212,7 +211,7 @@ post '/render' do
 
 		# Rendering the video with AE
 		ae_project_path = settings.ae_projects_folder + story_folder + "/" + story_project
-		output_file_name = story["name"] + "_" + remake_id.to_s + ".mp4"
+		output_file_name = story["name"].gsub(' ', '_') + "_" + remake_id.to_s + ".mp4"
 		output_path = settings.output_folder + output_file_name
 		rendered_video = AVUtils::Video.aerender(ae_project_path, output_path)
 
@@ -259,9 +258,9 @@ post '/render' do
 
 	    # Sending a mail about the error
 	    Mail.deliver do
-		  from    'render-worker@homage.it'
+		  from    'render-worker-' + environment + '@homage.it'
 		  to      'nir@homage.it'
-		  subject 'Error while rendering remake ' + remake_id.to_s + ' (' + ENV['RACK_ENV'].to_s + ')'
+		  subject 'Error while rendering remake ' + remake_id.to_s
 		  body    error.to_s + "\n" + error.backtrace.join("\n")
 		end
 
