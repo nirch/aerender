@@ -3,6 +3,7 @@ require 'aws-sdk'
 require 'mongo'
 require_relative 'video/AVUtils'
 require_relative 'utils/push/Homage_Push'
+require 'mail'
 
 configure do
 	# Global configuration (regardless of the environment)
@@ -15,7 +16,6 @@ configure do
 	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
 	set :cdn_folder, "Z:/CDN/"
 
-
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
 	AWS.config(aws_config)
@@ -25,6 +25,18 @@ configure do
 
 	AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
 	AVUtils.aerender_binary = 'C:/Program Files/Adobe/Adobe After Effects CC/Support Files/aerender.exe'
+
+	# Using Amazon's SES for mail delivery
+	Mail.defaults do
+  		delivery_method :smtp, { 
+		    :address => 'email-smtp.us-east-1.amazonaws.com',
+		    :port => '587',
+		    :user_name => 'AKIAI2R3CISWP2RWKJGA',
+		    :password => 'At7lxX0rtF3814Kr4mwrZTWO39kFZ1Kg+iRMhi1pjWPp',
+		    :authentication => :plain,
+		    :enable_starttls_auto => true
+		  }
+	end	
 end
 
 configure :development do
@@ -146,7 +158,7 @@ for i in 1..PARALLEL_PROCESS_NUM do
 					request.set_form_data(params)
 
 					# Extending the timeout
-					http.read_timeout = 180
+					http.read_timeout = 300
 
 					# Internal (localhost) request. No need for SSL
 					http.use_ssl = false
@@ -176,7 +188,6 @@ post '/render' do
 	begin
 		# input
 		remake_id = BSON::ObjectId.from_string(params[:remake_id])
-
 		remakes = settings.db.collection("Remakes")
 
 		# Logging and updating the DB that the rendering has started
@@ -186,6 +197,7 @@ post '/render' do
 		# Getting the remake and story to render
 		remake = remakes.find_one(remake_id)
 		story = settings.db.collection("Stories").find_one(remake["story_id"])
+		user = settings.db.collection("Users").find_one(remake["user_id"])
 
 		# Getting the AE project details
 		story_folder = story["after_effects"][remake["resolution"]]["folder"]
@@ -225,7 +237,6 @@ post '/render' do
 		logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
 		# Push notification for video ready
-		user = settings.db.collection("Users").find_one(remake["user_id"])
 		HomagePush.push_video_ready(story, remake, user, settings.push_client)
 
 		cdn_local_path = settings.cdn_folder + output_file_name
@@ -246,10 +257,16 @@ post '/render' do
 		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
 		#AWS::SQS::Client.change_message_visibility({:queue_url => settings.render_queue_url, :receipt_handle => handle, :visibility_timeout => 0})
 
+	    # Sending a mail about the error
+	    Mail.deliver do
+		  from    'render-worker@homage.it'
+		  to      'nir@homage.it'
+		  subject 'Error while rendering remake ' + remake_id.to_s + ' (' + ENV['RACK_ENV'].to_s + ')'
+		  body    error.to_s + "\n" + error.backtrace.join("\n")
+		end
+
 		# Push notification error
 		HomagePush.push_video_timeout(remake, user, settings.push_client)
-
-		# mail the error
 	end
 end
 

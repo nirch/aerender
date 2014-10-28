@@ -50,7 +50,7 @@ module HomagePush
       # Checking that not already pushed to this token
       if !tokens_used.include?(token) then
         push_client.push_ios(token, message, data) if device["push_token"]
-        push_client.send_android(token, message, data) if device["android_push_token"]
+        push_client.push_android(token, message, data) if device["android_push_token"]
         tokens_used.add(token)
       end
     end
