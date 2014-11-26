@@ -21,6 +21,18 @@ configure do
 	AVUtils.algo_binary = 'C:/Development/Algo/v-14-11-10/UniformMattingCA.exe'
 	AVUtils.algo_params = 'C:/Development/Algo/params.xml'
 
+	# Using Amazon's SES for mail delivery
+	Mail.defaults do
+  		delivery_method :smtp, { 
+		    :address => 'email-smtp.us-east-1.amazonaws.com',
+		    :port => '587',
+		    :user_name => 'AKIAI2R3CISWP2RWKJGA',
+		    :password => 'At7lxX0rtF3814Kr4mwrZTWO39kFZ1Kg+iRMhi1pjWPp',
+		    :authentication => :plain,
+		    :enable_starttls_auto => true
+		  }
+	end	
+
 	# Another logging option...
 	# Logger.class_eval { alias :write :'<<' }
 	# #log_file_path = File.join(File.expand_path(__FILE__), '..', 'logs', 'video_process_worker.log')
