@@ -2,6 +2,9 @@ require 'sinatra'
 require 'aws-sdk'
 require 'mongo'
 require_relative 'video/AVUtils'
+require_relative 'utils/push/Homage_Push'
+require 'mail'
+require 'open-uri'
 
 configure do
 	# Global configuration (regardless of the environment)
@@ -47,6 +50,9 @@ configure :development do
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
 
+	# Setting the push client
+	set :push_client, HomagePush::Client.development
+
 	# in debug logging into the console
 	set :logging, Logger::DEBUG
 	AVUtils.logger = ENV['rack.logger']
@@ -71,6 +77,9 @@ configure :test do
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
+
+	# Setting the push client
+	set :push_client, HomagePush::Client.development
 
 	set :logging, Logger::DEBUG
 
@@ -104,6 +113,9 @@ configure :production do
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
 	set :db, db_connection.db()
 
+	# Setting the push client
+	set :push_client, HomagePush::Client.production
+
 	set :logging, Logger::INFO
 
 	# Logging to file
@@ -124,6 +136,7 @@ module FootageStatus
   Uploaded = 1
   Processing = 2
   Ready = 3
+  ProcessFailed = 4
 end
 
 module RemakeStatus
@@ -184,97 +197,116 @@ for i in 1..PARALLEL_PROCESS_NUM do
 end
 
 post '/process' do
-	# input
-	remake_id = BSON::ObjectId.from_string(params[:remake_id])
-	scene_id = params[:scene_id].to_i
-	take_id = params[:take_id]
+	begin
+		# input
+		remake_id = BSON::ObjectId.from_string(params[:remake_id])
+		scene_id = params[:scene_id].to_i
+		take_id = params[:take_id]
 
-	logger.info "Process footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s + " with take_id " + take_id
+		logger.info "Process footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s + " with take_id " + take_id
 
-	# Fetching the remake and its story
-	remakes = settings.db.collection("Remakes")
-	remake = remakes.find_one(remake_id)
-	story = settings.db.collection("Stories").find_one(remake["story_id"])
+		# Fetching the remake and its story
+		remakes = settings.db.collection("Remakes")
+		remake = remakes.find_one(remake_id)
+		story = settings.db.collection("Stories").find_one(remake["story_id"])
+		user = settings.db.collection("Users").find_one(remake["user_id"])
+		environment = settings.environment.to_s
 
-	# Creating a new directory for the processing
-	#@process_folder = settings.remakes_folder + remake_id.to_s + "_scene_" + scene_id.to_s + "_" + take_id + "/"
-	@process_folder = settings.remakes_folder + take_id + "/"
+		# Creating a new directory for the processing
+		process_folder = settings.remakes_folder + take_id + "/"
 
-	# Returning an error if the directory exists
-	if File.directory?(@process_folder) then
-		error_message = "process directory already exists for: " + @process_folder
-		logger.error error_message
-		halt 500
-	end
-
-	logger.info "Creating temp folder: " + @process_folder.to_s
-	FileUtils.mkdir @process_folder
-
-	# Updating the status of this footage to Processing
-	result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
-	logger.info "Footage status updated to Processing (2) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
-
-	# Downloading the raw video from s3
-	raw_video_s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
-	raw_video_file_path = @process_folder + File.basename(raw_video_s3_key)	
-	download_from_s3 raw_video_s3_key, raw_video_file_path
-
-	raw_video = AVUtils::Video.new(raw_video_file_path)
-
-	# Checking if forgeound extraction is needed
-	if story["scenes"][scene_id - 1]["silhouette"] or story["scenes"][scene_id - 1]["silhouettes"] then
-		# Getting the contour
-		contour_path = get_contour_path(remake, story, scene_id)
-
-		# Processing the video
-		processed_video = raw_video.process(contour_path)
-	else
-		logger.info "foreground extraction not needed for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
-
-		# Resizing/Cropping the video to 360p (640x360) if needed
-		if raw_video.resolution == "1280x720" then
-			processed_video = raw_video.resize(640, 360)
-		elsif video_to_process.resolution == "640x480" then
-			processed_video = raw_video.crop(640, 360)
-		else
-			processed_video = raw_video
+		# Returning an error if the directory exists
+		if File.directory?(process_folder) then
+			error_message = "process directory already exists for: " + process_folder
+			logger.error error_message
+			halt 500
 		end
-	end
 
-	# Uploading and updating the status of this footage to Ready only if this is the latest take for the scene (else ignoring it)
-	if is_latest_take(remake, scene_id, take_id) then
-		# upload to s3
-		processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
-		upload_to_s3 processed_video.path, processed_video_s3_key, :private
+		logger.info "Creating temp folder: " + process_folder.to_s
+		FileUtils.mkdir process_folder
 
-		result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
-		logger.info "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
-	else
-		logger.info "not updating the DB to status ready since this is not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
-	end
+		# Updating the status of this footage to Processing
+		result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
+		logger.info "Footage status updated to Processing (2) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 
-	#handle_send_to_render_queue(remake_id)
+		# Downloading the raw video from s3
+		raw_video_s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
+		raw_video_file_path = process_folder + File.basename(raw_video_s3_key)	
+		download_from_s3 raw_video_s3_key, raw_video_file_path
 
-	# Deleting the folder after everything was updated successfully
-	logger.info "Deleting temp folder: " + @process_folder
-	FileUtils.remove_dir(@process_folder, true)
+		raw_video = AVUtils::Video.new(raw_video_file_path)
 
-	return 200
+		# Checking if forgeound extraction is needed
+		if story["scenes"][scene_id - 1]["silhouette"] or story["scenes"][scene_id - 1]["silhouettes"] then
+			# Getting the contour
+			contour_path = get_contour_path(remake, story, scene_id)
 
-end
+			# Processing the video
+			processed_video = raw_video.process(contour_path)
+		else
+			logger.info "foreground extraction not needed for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 
+			# Resizing/Cropping the video to 360p (640x360) if needed
+			if raw_video.resolution == "1280x720" then
+				processed_video = raw_video.resize(640, 360)
+			elsif video_to_process.resolution == "640x480" then
+				processed_video = raw_video.crop(640, 360)
+			else
+				processed_video = raw_video
+			end
+		end
 
-error do
-	logger.error 'error caught in error block: ' + env['sinatra.error'].to_s
+		# Uploading and updating the status of this footage to Ready only if this is the latest take for the scene (else ignoring it)
+		if is_latest_take(remake, scene_id, take_id) then
+			# upload to s3
+			processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
+			upload_to_s3 processed_video.path, processed_video_s3_key, :private
 
-	# renaming the process folder if it exists
-	if @process_folder then
-		original_folder = File.expand_path(@process_folder)
-		renamed_folder = original_folder + '_backup_' + Time.now.to_i.to_s
-		logger.info 'error occured, renaming the process folder to ' + renamed_folder
-		File.rename(original_folder, renamed_folder)
-	else
-		logger.debug 'process folder is nil - nothing to delete'
+			result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
+			logger.info "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+		else
+			logger.info "not updating the DB to status ready since this is not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
+		end
+
+		handle_send_to_render_queue(remake_id)
+
+		# Deleting the folder after everything was updated successfully
+		logger.info "Deleting temp folder: " + process_folder
+		FileUtils.remove_dir(process_folder, true)
+
+		return 200
+	rescue => error
+		# log the error
+		logger.error error.to_s
+		logger.error error.backtrace.join("\n")
+
+		# update DB that remake ans footage process failed
+		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
+		remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::ProcessFailed}})
+		# clear visibility timout (ChangeMessageVisibility)
+		#AWS::SQS::Client.change_message_visibility({:queue_url => settings.render_queue_url, :receipt_handle => handle, :visibility_timeout => 0})
+
+	    # Sending a mail about the error
+	    Mail.deliver do
+		  from    'cv-worker-' + environment + '@homage.it'
+		  to      'nir@homage.it'
+		  subject 'Error while processing video ' + take_id.to_s
+		  body    error.to_s + "\n" + error.backtrace.join("\n")
+		end
+
+		# Push notification error
+		HomagePush.push_video_timeout(remake, user, settings.push_client)
+
+		# renaming the process folder if it exists
+		if process_folder then
+			original_folder = File.expand_path(process_folder)
+			renamed_folder = original_folder + '_backup_' + Time.now.to_i.to_s
+			logger.info 'error occured, renaming the process folder to ' + renamed_folder
+			File.rename(original_folder, renamed_folder)
+		else
+			logger.debug 'process folder is nil - nothing to delete'
+		end
+
 	end
 end
 
