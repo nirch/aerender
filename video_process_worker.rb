@@ -387,14 +387,14 @@ end
 	# 1. User clicked on "Create Movie" (status of remake is pending for scenes to complete)
 	# 2. All scenes are processed
 def handle_send_to_render_queue(remake_id)
-	remake = settings.collection("Remakes").find_one(remake_id)
+	remake = settings.db.collection("Remakes").find_one(remake_id)
 
 	# Resturns if the user didn't press on "Create Movie"
 	return unless remake["status"] == RemakeStatus::PendingScenes
 
 	scenes_number = remake["footages"].count
 	scenes_ready = 0
-	for footage in remakes["footages"] do
+	for footage in remake["footages"] do
 		if footage["status"] == FootageStatus::Ready then
 			scenes_ready += 1
 		end
