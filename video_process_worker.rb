@@ -280,7 +280,14 @@ post '/process' do
 			logger.info "not updating the DB to status ready since this is not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 		end
 
-		handle_send_to_render_queue(remake_id)
+		# If remake is ready sending it to the render queue and updating the DB
+		if remake_ready?(remake_id) then
+			message = {remake_id: remake_id.to_s}
+			settings.render_queue.send_message(message.to_json)
+
+			remakes = settings.db.collection("Remakes")
+			remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::PendingQueue}})
+		end
 
 		# Deleting the folder after everything was updated successfully
 		logger.info "Deleting temp folder: " + process_folder
@@ -386,29 +393,31 @@ end
 # This method checks the set of rules if the current remake is ready to be sent to the render queue
 	# 1. User clicked on "Create Movie" (status of remake is pending for scenes to complete)
 	# 2. All scenes are processed
-def handle_send_to_render_queue(remake_id)
+def remake_ready?(remake_id)
 	remake = settings.db.collection("Remakes").find_one(remake_id)
 
-	# Resturns if the user didn't press on "Create Movie"
-	return unless remake["status"] == RemakeStatus::PendingScenes
+	logger.info "Checking if remake " + remake_id.to_s + " is ready for render"
+	if remake["status"] == RemakeStatus::PendingScenes then
+		logger.info "Remake " + remake_id.to_s + " is in status PendignScenes, now checking if all scenes are processed"
 
-	scenes_number = remake["footages"].count
-	scenes_ready = 0
-	for footage in remake["footages"] do
-		if footage["status"] == FootageStatus::Ready then
-			scenes_ready += 1
+		scenes_number = remake["footages"].count
+		scenes_ready = 0
+		for footage in remake["footages"] do
+			if footage["status"] == FootageStatus::Ready then
+				scenes_ready += 1
+			end
 		end
+
+		if scenes_ready == scenes_number then
+			logger.info "Remake " + remake_id.to_s + " is ready for render"
+			return true	
+		else
+			logger.info "Remake " + remake_id.to_s + " has only " + scenes_ready.to_s " out of " + scenes_number.to_s " processed, hence is not ready"
+			return false
+		end 
+
+	else
+		logger.info "Remake " + remake_id.to_s + " is not in status PendignScenes, hence is not ready"
+		return false
 	end
-
-	# Returns if not all scenes are ready
-	return unless scenes_ready == scenes_number
-
-	# Got here?! - Send render to queue!
-	message = {remake_id: remake_id.to_s}
-	settings.render_queue.send_message(message.to_json)
-
-	# Update the DB that the remake is in the render queue
-	remakes = settings.db.collection("Remakes")
-	remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::PendingQueue}})
-
 end
