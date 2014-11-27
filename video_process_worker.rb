@@ -285,7 +285,6 @@ post '/process' do
 			message = {remake_id: remake_id.to_s}
 			settings.render_queue.send_message(message.to_json)
 
-			remakes = settings.db.collection("Remakes")
 			remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::PendingQueue}})
 		end
 
@@ -417,7 +416,7 @@ def remake_ready?(remake_id)
 		end 
 
 	else
-		logger.info "Remake " + remake_id.to_s + " is not in status PendignScenes, hence is not ready"
+		logger.info "Remake " + remake_id.to_s + " is not in status PendingScenes, hence is not ready"
 		return false
 	end
 end
