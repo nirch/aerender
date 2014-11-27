@@ -412,7 +412,7 @@ def remake_ready?(remake_id)
 			logger.info "Remake " + remake_id.to_s + " is ready for render"
 			return true	
 		else
-			logger.info "Remake " + remake_id.to_s + " has only " + scenes_ready.to_s " out of " + scenes_number.to_s " processed, hence is not ready"
+			logger.info "Remake " + remake_id.to_s + " has only " + scenes_ready.to_s + " out of " + scenes_number.to_s + " processed, hence is not ready"
 			return false
 		end 
 
