@@ -244,6 +244,9 @@ post '/process' do
 		# Downloading the raw video from s3
 		raw_video_s3_key = remake["footages"][scene_id - 1]["raw_video_s3_key"]
 		raw_video_file_path = process_folder + File.basename(raw_video_s3_key)	
+		thumbnail_extension = "_raw1.jpg"
+		thumbnail_file_name = remake_id.to_s
+		raw_thumbnail_s3_key = File.dirname(raw_video_s3_key).to_s + "/" + file_name + thumbnail_extension
 		download_from_s3 raw_video_s3_key, raw_video_file_path
 
 		raw_video = AVUtils::Video.new(raw_video_file_path)
@@ -252,9 +255,28 @@ post '/process' do
 		if story["scenes"][scene_id - 1]["silhouette"] or story["scenes"][scene_id - 1]["silhouettes"] then
 			# Getting the contour
 			contour_path = get_contour_path(remake, story, scene_id)
+			processed_video = nil
+			if scene_id == 1
+				# Processing the video
+				processed_video, background_value, first_frame_path = raw_video.process(contour_path,nil,true)
+				#upload thumbnail to s3
+				s3_upload_thumbnail_object = upload_to_s3 first_frame_path, raw_thumbnail_s3_key, :public_read, 'image/jpeg'
+				#Update mongo db with background and thumbnail
+				##---------------------------------------------
+				if s3_upload_thumbnail_object != nil && processed_video != nil
+					if processed_video.background_score != nil
+						remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.background" => background_value}})
+					end
+					if s3_upload_thumbnail_object.public_url != nil
+						remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.raw_thumbnail" => s3_upload_thumbnail_object.public_url.to_s}})
+					end
+				end
+			else
+				# Processing the video
+				processed_video = raw_video.process(contour_path)
+			end
 
-			# Processing the video
-			processed_video = raw_video.process(contour_path)
+			
 		else
 			logger.info "foreground extraction not needed for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 

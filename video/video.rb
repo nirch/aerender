@@ -102,7 +102,7 @@ module AVUtils
 			return destination
 		end
 
-		def process(contour_path, destination=nil)
+		def process(contour_path, destination=nil, detect_background=false)
 			raise Errno::ENOENT, "the file '#{contour_path}' does not exist" unless File.exists?(contour_path)
 			raise Errno::ENOENT, "the file '#{AVUtils.algo_binary}' does not exist" unless File.exists?(AVUtils.algo_binary)
 			raise Errno::ENOENT, "the file '#{AVUtils.algo_params}' does not exist" unless File.exists?(AVUtils.algo_params)
@@ -130,8 +130,25 @@ module AVUtils
 			algo_command = AVUtils.algo_binary + ' -CA "' + AVUtils.algo_params + '" "' + contour_path + '" ' + flip_switch + ' "' + first_frame_path + '" -avic -r' + frame_rate + ' -mp4 "' + destination + '"'
 			#algo_command = AVUtils.algo_binary + ' "' + AVUtils.algo_params + '" "' + contour_path + '" ' + flip_switch + ' "' + first_frame_path + '" -avic -r' + frame_rate + ' -mp4 "' + destination + '"'
 			AVUtils.logger.info "algo command: " + algo_command 
-			system(algo_command)
+			
 			video_to_process = AVUtils::Video.new(destination)
+
+			#Get the output from The Background Detection
+			##-----------------------------------------------
+			if detect_background
+				background_value = nil
+				commandlineresult = []
+				IO.popen(algo_command) do |output|
+					commandlineresult = output.readlines
+				end
+				for line in commandlineresult
+					if  line.include? "background: "
+						background_value = line.split(": ")[1].gsub("\n",'')
+					end
+				end
+			else
+				system(algo_command)
+			end
 
 			# Transcoding the large AVI file to a small mp4 file
 			video_to_process = video_to_process.transcode("mpeg4", "1200")
@@ -139,7 +156,7 @@ module AVUtils
 			# Adding the audio from the raw video (only if the raw video has audio)
 			video_to_process = video_to_process.add_audio(raw_video.path) unless !raw_video.audio?
 
-			return video_to_process
+			return video_to_process, background_value, first_frame_path
 		end
 
 		def self.aerender(project_path, desintation)
