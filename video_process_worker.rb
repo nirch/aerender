@@ -264,7 +264,7 @@ post '/process' do
 				#Update mongo db with background and thumbnail
 				##---------------------------------------------
 				if s3_upload_thumbnail_object != nil && processed_video != nil
-					if processed_video.background_score != nil
+					if background_value != nil
 						remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.background" => background_value}})
 					end
 					if s3_upload_thumbnail_object.public_url != nil
