@@ -131,8 +131,6 @@ module AVUtils
 			#algo_command = AVUtils.algo_binary + ' "' + AVUtils.algo_params + '" "' + contour_path + '" ' + flip_switch + ' "' + first_frame_path + '" -avic -r' + frame_rate + ' -mp4 "' + destination + '"'
 			AVUtils.logger.info "algo command: " + algo_command 
 			
-			video_to_process = AVUtils::Video.new(destination)
-
 			#Get the output from The Background Detection
 			##-----------------------------------------------
 			if detect_background
@@ -149,6 +147,8 @@ module AVUtils
 			else
 				system(algo_command)
 			end
+
+			video_to_process = AVUtils::Video.new(destination)
 
 			# Transcoding the large AVI file to a small mp4 file
 			video_to_process = video_to_process.transcode("mpeg4", "1200")
