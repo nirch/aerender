@@ -246,7 +246,7 @@ post '/process' do
 		raw_video_file_path = process_folder + File.basename(raw_video_s3_key)	
 		thumbnail_extension = "_raw1.jpg"
 		thumbnail_file_name = remake_id.to_s
-		raw_thumbnail_s3_key = File.dirname(raw_video_s3_key).to_s + "/" + file_name + thumbnail_extension
+		raw_thumbnail_s3_key = File.dirname(raw_video_s3_key).to_s + "/" + thumbnail_file_name + thumbnail_extension
 		download_from_s3 raw_video_s3_key, raw_video_file_path
 
 		raw_video = AVUtils::Video.new(raw_video_file_path)
