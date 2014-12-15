@@ -273,7 +273,7 @@ post '/process' do
 				end
 			else
 				# Processing the video
-				processed_video = raw_video.process(contour_path)
+				processed_video, background_value, first_frame_path = raw_video.process(contour_path)
 			end
 
 			
