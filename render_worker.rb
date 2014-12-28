@@ -13,7 +13,6 @@ configure do
 	# Setting folders
 	set :ae_projects_folder, "C:/Users/Administrator/Documents/AE Projects/"
 	set :output_folder, "Z:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
-	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
 	set :cdn_folder, "Z:/CDN/"
 
 	# AWS Connection
@@ -48,6 +47,7 @@ configure :development do
 	set :output_folder, "C:/Development/Homage/After/Ouput/"
 	set :cdn_folder,  "C:/Development/Homage/After/CDN/"
 	set :s3_bucket_path, "https://homagetest.s3.amazonaws.com/"
+	set :cdn_path, "http://d2m9jhdu5nhw9c.cloudfront.net/"
 
 
 	# Process Footage Queue
@@ -77,6 +77,8 @@ configure :test do
 
 	# Setting folders
 	set :s3_bucket_path, "https://homagetest.s3.amazonaws.com/"
+	set :cdn_path, "http://d2m9jhdu5nhw9c.cloudfront.net/"
+
 
 	# Process Footage Queue
 	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
@@ -113,6 +115,8 @@ configure :production do
 
 	# Setting folders
 	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
+	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
+
 
 	# Process Footage Queue
 	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueue"
