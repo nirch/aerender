@@ -62,6 +62,10 @@ configure :development do
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
 
+	# AWS S3
+	s3 = AWS::S3.new
+	set :bucket, s3.buckets['homagetest']
+
 	# Setting the push client
 	set :push_client, HomagePush::Client.development
 
@@ -89,6 +93,10 @@ configure :test do
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
+
+	# AWS S3
+	s3 = AWS::S3.new
+	set :bucket, s3.buckets['homagetest']
 
 	# Setting the push client
 	set :push_client, HomagePush::Client.development
@@ -124,6 +132,10 @@ configure :production do
     # DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
 	set :db, db_connection.db()
+
+	# AWS S3
+	s3 = AWS::S3.new
+	set :bucket, s3.buckets['homageapp']
 
 	# Setting the push client
 	set :push_client, HomagePush::Client.production
@@ -366,8 +378,7 @@ def get_contour_path(remake, story, scene_id)
 end
 
 def download_from_s3 (s3_key, local_path)
-	s3 = AWS::S3.new
-	bucket = s3.buckets['homageapp']
+	bucket = settings.bucket
 
 	logger.info "Downloading file from S3 with key " + s3_key
 	s3_object = bucket.objects[s3_key]
@@ -383,8 +394,7 @@ def download_from_s3 (s3_key, local_path)
 end
 
 def upload_to_s3 (file_path, s3_key, acl, content_type=nil)
-	s3 = AWS::S3.new
-	bucket = s3.buckets['homageapp']
+	bucket = settings.bucket
 	s3_object = bucket.objects[s3_key]
 
 	logger.info 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
