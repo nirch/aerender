@@ -13,8 +13,6 @@ configure do
 	# Setting folders
 	set :ae_projects_folder, "C:/Users/Administrator/Documents/AE Projects/"
 	set :output_folder, "Z:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
-	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
-	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
 	set :cdn_folder, "Z:/CDN/"
 
 	# AWS Connection
@@ -48,6 +46,9 @@ configure :development do
 	set :ae_projects_folder, "C:/Users/Channes/Documents/AE Projects/"
 	set :output_folder, "C:/Development/Homage/After/Ouput/"
 	set :cdn_folder,  "C:/Development/Homage/After/CDN/"
+	set :s3_bucket_path, "https://homagetest.s3.amazonaws.com/"
+	set :cdn_path, "http://d2m9jhdu5nhw9c.cloudfront.net/"
+
 
 	# Process Footage Queue
 	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
@@ -56,6 +57,10 @@ configure :development do
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
+
+	# AWS S3
+	s3 = AWS::S3.new
+	set :bucket, s3.buckets['homagetest']
 
 	# in development logging into the console
 	set :logging, Logger::DEBUG
@@ -71,6 +76,9 @@ configure :test do
 	disable :raise_errors, :show_exceptions
 
 	# Setting folders
+	set :s3_bucket_path, "https://homagetest.s3.amazonaws.com/"
+	set :cdn_path, "http://d2m9jhdu5nhw9c.cloudfront.net/"
+
 
 	# Process Footage Queue
 	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
@@ -79,6 +87,10 @@ configure :test do
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
+
+	# AWS S3
+	s3 = AWS::S3.new
+	set :bucket, s3.buckets['homagetest']
 
 	set :share_link_prefix, "http://homage-server-app-dev.elasticbeanstalk.com/play/"
 
@@ -102,6 +114,9 @@ configure :production do
 	disable :raise_errors, :show_exceptions
 
 	# Setting folders
+	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
+	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
+
 
 	# Process Footage Queue
 	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueue"
@@ -110,6 +125,10 @@ configure :production do
     # DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
 	set :db, db_connection.db()
+
+	# AWS S3
+	s3 = AWS::S3.new
+	set :bucket, s3.buckets['homageapp']
 
 	set :share_link_prefix, "http://play.homage.it/"
 
@@ -290,8 +309,7 @@ def download_from_url (url, local_path)
 end
 
 def download_from_s3 (s3_key, local_path)
-	s3 = AWS::S3.new
-	bucket = s3.buckets['homageapp']
+	bucket = settings.bucket
 
 	logger.info "Downloading file from S3 with key " + s3_key
 	s3_object = bucket.objects[s3_key]
@@ -307,8 +325,7 @@ def download_from_s3 (s3_key, local_path)
 end
 
 def upload_to_s3 (file_path, s3_key, acl, content_type=nil)
-	s3 = AWS::S3.new
-	bucket = s3.buckets['homageapp']
+	bucket = settings.bucket
 	s3_object = bucket.objects[s3_key]
 
 	logger.info 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
