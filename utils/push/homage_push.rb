@@ -32,6 +32,12 @@ module HomagePush
     push_to_user(user, message, data, push_client)
   end
 
+  def self.push_new_story(story, message, user, push_client)
+    data = {type: HomagePush::NewStory, story_id: story["_id"].to_s, title:"New Story!"}
+
+    push_to_user(user, message, data, push_client)    
+  end
+
   def self.push_video_timeout(remake, user, push_client)
     message = "Failed to create your video, open the application and try again"
     data = {type: HomagePush::VideoTimout, remake_id: remake["_id"].to_s, story_id: remake["story_id"].to_s, title:"Video Creation Failed"}
