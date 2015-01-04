@@ -1,18 +1,14 @@
 require 'sinatra'
-require 'aws-sdk'
 require 'mongo'
 require_relative 'video/AVUtils'
 require_relative 'utils/push/Homage_Push'
+require_relative 'utils/aws/Homage_AWS'
 require 'mail'
 require 'open-uri'
 
 configure do
 	# Global configuration (regardless of the environment)
 	set :server, 'webrick'
-
-	# AWS Connection
-	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
-	AWS.config(aws_config)
 
 	process_footage_url = "http://localhost:" + settings.port.to_s + "/process"
 	set :process_footage_uri, URI.parse(process_footage_url)
@@ -50,21 +46,16 @@ configure :development do
 	set :remakes_folder, "C:/Development/Homage/Algo/Remakes/"
 	set :contour_folder, "C:/Development/Homage/Algo/Contours/"
 
-	# Process Footage Queue
-	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueueTest"
-    set :process_footage_queue, AWS::SQS.new.queues[process_footage_queue_url]
-
-	# Process Render Queue
-	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
-    set :render_queue, AWS::SQS.new.queues[render_queue_url]
+	# Queues
+    set :process_footage_queue, HomageAWS::HomageSQS.test.cv_queue
+    set :render_queue, HomageAWS::HomageSQS.test.render_queue
 
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
 
 	# AWS S3
-	s3 = AWS::S3.new
-	set :bucket, s3.buckets['homagetest']
+	set :s3, HomageAWS::HomageS3.test
 
 	# Setting the push client
 	set :push_client, HomagePush::Client.development
@@ -82,21 +73,16 @@ configure :test do
 	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
 	set :contour_folder, "C:/Users/Administrator/Documents/Contours/"
 
-	# Process Footage Queue
-	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueueTest"
-    set :process_footage_queue, AWS::SQS.new.queues[process_footage_queue_url]
-
-	# Process Render Queue
-	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
-    set :render_queue, AWS::SQS.new.queues[render_queue_url]
+	# Queues
+    set :process_footage_queue, HomageAWS::HomageSQS.test.cv_queue
+    set :render_queue, HomageAWS::HomageSQS.test.render_queue
 
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
 	set :db, db_connection.db()
 
 	# AWS S3
-	s3 = AWS::S3.new
-	set :bucket, s3.buckets['homagetest']
+	set :s3, HomageAWS::HomageS3.test
 
 	# Setting the push client
 	set :push_client, HomagePush::Client.development
@@ -121,21 +107,16 @@ configure :production do
 	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
 	set :contour_folder, "C:/Users/Administrator/Documents/Contours/"
 
-	# Process Footage Queue
-	process_footage_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/ProcessFootageQueue"
-    set :process_footage_queue, AWS::SQS.new.queues[process_footage_queue_url]
-
-	# Process Render Queue
-	render_queue_url = "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueue"
-    set :render_queue, AWS::SQS.new.queues[render_queue_url]
+	# Queues
+    set :process_footage_queue, HomageAWS::HomageSQS.production.cv_queue
+    set :render_queue, HomageAWS::HomageSQS.production.render_queue
 
     # DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
 	set :db, db_connection.db()
 
 	# AWS S3
-	s3 = AWS::S3.new
-	set :bucket, s3.buckets['homageapp']
+	set :s3, HomageAWS::HomageS3.production
 
 	# Setting the push client
 	set :push_client, HomagePush::Client.production
@@ -220,12 +201,20 @@ for i in 1..PARALLEL_PROCESS_NUM do
 	end
 end
 
+# def handle_upload_notification
+# 	s3_object_key = params[:Records][:s3][:object][:key]
+# end
+
 post '/process' do
 	begin
 		# input
-		remake_id = BSON::ObjectId.from_string(params[:remake_id])
-		scene_id = params[:scene_id].to_i
-		take_id = params[:take_id]
+		# if params[:Records] then
+		# 	remake_id, scene_id, take_id = handle_upload_notification
+		# else
+			remake_id = BSON::ObjectId.from_string(params[:remake_id])
+			scene_id = params[:scene_id].to_i
+			take_id = params[:take_id]
+#		end
 
 		logger.info "Process footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s + " with take_id " + take_id
 
@@ -259,7 +248,7 @@ post '/process' do
 		thumbnail_extension = "_raw1.jpg"
 		thumbnail_file_name = remake_id.to_s
 		raw_thumbnail_s3_key = File.dirname(raw_video_s3_key).to_s + "/" + thumbnail_file_name + thumbnail_extension
-		download_from_s3 raw_video_s3_key, raw_video_file_path
+		settings.s3.download raw_video_s3_key, raw_video_file_path
 
 		raw_video = AVUtils::Video.new(raw_video_file_path)
 
@@ -272,7 +261,7 @@ post '/process' do
 				# Processing the video
 				processed_video, background_value, first_frame_path = raw_video.process(contour_path,nil,true)
 				#upload thumbnail to s3
-				s3_upload_thumbnail_object = upload_to_s3 first_frame_path, raw_thumbnail_s3_key, :public_read, 'image/jpeg'
+				s3_upload_thumbnail_object = settings.s3.upload first_frame_path, raw_thumbnail_s3_key, :public_read, 'image/jpeg'
 				#Update mongo db with background and thumbnail
 				##---------------------------------------------
 				if s3_upload_thumbnail_object != nil && processed_video != nil
@@ -306,7 +295,7 @@ post '/process' do
 		if is_latest_take(remake, scene_id, take_id) then
 			# upload to s3
 			processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
-			upload_to_s3 processed_video.path, processed_video_s3_key, :private
+			settings.s3.upload processed_video.path, processed_video_s3_key, :private
 
 			result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
 			logger.info "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
@@ -375,35 +364,6 @@ def get_contour_path(remake, story, scene_id)
 
 	contour_path = settings.contour_folder + File.basename(contour)
 	return contour_path
-end
-
-def download_from_s3 (s3_key, local_path)
-	bucket = settings.bucket
-
-	logger.info "Downloading file from S3 with key " + s3_key
-	s3_object = bucket.objects[s3_key]
-
-	File.open(local_path, 'wb') do |file|
-  		s3_object.read do |chunk|
-    		file.write(chunk)
-    	end
-    	file.close
-    end
-
-  	logger.info "File downloaded successfully to: " + local_path
-end
-
-def upload_to_s3 (file_path, s3_key, acl, content_type=nil)
-	bucket = settings.bucket
-	s3_object = bucket.objects[s3_key]
-
-	logger.info 'Uploading the file <' + file_path + '> to S3 path <' + s3_object.key + '>'
-	#file = File.new(file_path)
-	s3_object.write(Pathname.new(file_path), {:acl => acl, :content_type => content_type})
-	#file.close
-	logger.info "Uploaded successfully to S3, url is: " + s3_object.public_url.to_s
-
-	return s3_object
 end
 
 def is_latest_take(remake, scene_id, take_id)
