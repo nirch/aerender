@@ -201,22 +201,45 @@ for i in 1..PARALLEL_PROCESS_NUM do
 	end
 end
 
-# def handle_upload_notification
-# 	s3_object_key = params[:Records][:s3][:object][:key]
-# end
+def handle_upload_notification
+	remake_id = nil
+	scene_id = nil
+	take_id = nil
+
+	if params[:Records]
+		# Direct notification from S3 on upload. Verifing that this a raw object
+		# "Remakes/54a59def771ac166c5000001/raw_scene_2.mov"
+		upload_object_key = params[:Records][0][:object][:key]
+		logger.info "New S3 upload with key: " + upload_object_key
+
+		upload_object = settings.s3.get_object(upload_object_key)
+		take_id = upload_object.metadata['take_id']
+		if take_id
+			remake_id = take_id.split('_')[0]
+			scene_id = take_id.split('_')[1].to_i
+		else
+			logger.info "S3 upload is not a raw scene. key: " + upload_object_key
+		end
+	elsif params[:remake_id] && params[:scene_id] && params[:take_id]
+		# Supporting old POST/PUT from client
+		remake_id = BSON::ObjectId.from_string(params[:remake_id])
+		scene_id = params[:scene_id].to_i
+		take_id = params[:take_id]
+
+		logger.info "Old Process footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s + " with take_id " + take_id
+	else
+		logger.error "Invalid params for processing video. params: " + params.to_s
+	end
+
+	return remake_id, scene_id, take_id
+end
 
 post '/process' do
 	begin
-		# input
-		# if params[:Records] then
-		# 	remake_id, scene_id, take_id = handle_upload_notification
-		# else
-			remake_id = BSON::ObjectId.from_string(params[:remake_id])
-			scene_id = params[:scene_id].to_i
-			take_id = params[:take_id]
-#		end
+		remake_id, scene_id, take_id = handle_upload_notification
 
-		logger.info "Process footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s + " with take_id " + take_id
+		# Returning if there is no remake id resolved
+		return 200 unless remake_id
 
 		# Fetching the remake and its story
 		remakes = settings.db.collection("Remakes")
@@ -276,8 +299,6 @@ post '/process' do
 				# Processing the video
 				processed_video, background_value, first_frame_path = raw_video.process(contour_path)
 			end
-
-			
 		else
 			logger.info "foreground extraction not needed for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 
