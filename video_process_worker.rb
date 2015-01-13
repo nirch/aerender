@@ -43,8 +43,8 @@ configure :development do
 	disable :raise_errors
 
 	# Setting folders
-	set :remakes_folder, "C:/Development/Homage/Algo/Remakes/"
-	set :contour_folder, "C:/Development/Homage/Algo/Contours/"
+	set :remakes_folder, "C:/Development/Homage/Remakes/"
+	set :contour_folder, "C:/Development/Homage/Contours/"
 
 	# Queues
     set :process_footage_queue, HomageAWS::HomageSQS.test.cv_queue
