@@ -12,10 +12,10 @@ s3 = HomageAWS::HomageS3.production
 
 remakes_collection = db.collection("Remakes")
 stories_collection = db.collection("Stories")
-download_folder = "C:/Users/homage/Documents/Data/Backgroud/Prod"
+download_folder = 'C:\Development\Homage\Background\Try'#"C:/Users/homage/Documents/Data/Backgroud/Prod"
 
 date = Time.parse("20150111Z")
-remakes = remakes_collection.find(created_at:{"$gte"=>date}, status:3).limit(1)
+remakes = remakes_collection.find(created_at:{"$gte"=>date}, status:3).skip(70).limit(50)
 
 for remake in remakes do
 	remake_id = remake['_id'].to_s
