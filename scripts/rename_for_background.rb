@@ -1,4 +1,4 @@
-folder = 'C:/Development/Homage/Background/Drive/Shadow/*.*'
+folder = 'C:/Users/homage/Documents/Data/Backgroud/Objects/*.*'
 
 Dir.glob(folder) do |file|
 	extension = File.extname(file)

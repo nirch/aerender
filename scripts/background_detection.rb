@@ -1,7 +1,7 @@
 require 'fileutils'
 require 'mini_exiftool'
 
-folder = 'C:/Development/Homage/Background/Try'
+folder = 'C:/Users/homage/Documents/Data/Backgroud/Objects'
 background_ca_path = 'C:\Development\Homage\Background\Binary\UnBackgroundCAD.exe'
 params_path = 'C:\Development\Algo\params.xml'
 
@@ -31,6 +31,7 @@ Dir.glob(folder_jpg) do |file|
 
 	# Running the command
 	output = IO.popen(background_command).readlines
+	#puts output
 	background_state = output[output.length-1].split(': ')[1].chomp
 	puts background_state
 
