@@ -215,6 +215,7 @@ post '/render' do
 		remake = remakes.find_one(remake_id)
 		story = settings.db.collection("Stories").find_one(remake["story_id"])
 		user = settings.db.collection("Users").find_one(remake["user_id"])
+		campaign_id = story["campaign_id"].to_s
 		environment = settings.environment.to_s
 
 		# Getting the AE project details
@@ -256,7 +257,7 @@ post '/render' do
 		logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
 		# Push notification for video ready
-		HomagePush.push_video_ready(story, remake, user, settings.push_client)
+		HomagePush.push_video_ready(story, remake, user, settings.push_client[campaign_id])
 
 		cdn_local_path = settings.cdn_folder + output_file_name
 		logger.info "downloading the just created video to update CDN cache"
@@ -285,7 +286,7 @@ post '/render' do
 		end
 
 		# Push notification error
-		HomagePush.push_video_timeout(remake, user, settings.push_client)
+		HomagePush.push_video_timeout(remake, user, settings.push_client[campaign_id])
 
 		logger.info "failed push notification sent successfully"
 	end

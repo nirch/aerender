@@ -1,8 +1,8 @@
 require 'fileutils'
 require 'mini_exiftool'
 
-folder = 'C:/Users/homage/Documents/Data/Backgroud/Objects'
-background_ca_path = 'C:\Development\Homage\Background\Binary\UnBackgroundCAD.exe'
+folder = 'C:/Users/homage/Documents/Data/Backgroud/Prod'
+background_ca_path = 'C:\Development\Homage\Background\Binary\UnBackgroundCA.exe'
 params_path = 'C:\Development\Algo\params.xml'
 
 output_folder = File.join folder, 'Output'#'C:/Development/Homage/Background/Runtest/Output'

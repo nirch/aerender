@@ -236,7 +236,12 @@ end
 
 post '/process' do
 	begin
-		remake_id, scene_id, take_id = handle_upload_notification
+		#remake_id, scene_id, take_id = handle_upload_notification
+		# Supporting old POST/PUT from client
+		remake_id = BSON::ObjectId.from_string(params[:remake_id])
+		scene_id = params[:scene_id].to_i
+		take_id = params[:take_id]
+
 
 		# Returning if there is no remake id resolved
 		return 200 unless remake_id
@@ -246,6 +251,7 @@ post '/process' do
 		remake = remakes.find_one(remake_id)
 		story = settings.db.collection("Stories").find_one(remake["story_id"])
 		user = settings.db.collection("Users").find_one(remake["user_id"])
+		campaign_id = story["campaign_id"].to_s
 		environment = settings.environment.to_s
 
 		# Creating a new directory for the processing
@@ -357,7 +363,7 @@ post '/process' do
 		end
 
 		# Push notification error
-		HomagePush.push_video_timeout(remake, user, settings.push_client)
+		HomagePush.push_video_timeout(remake, user, settings.push_client[campaign_id])
 
 		# renaming the process folder if it exists
 		if process_folder then

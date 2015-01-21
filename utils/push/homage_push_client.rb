@@ -7,40 +7,53 @@ module HomagePush
 
 		class << self
 			def development
-				client = self.new
-
+				# Homage Push Client
+				homage_client = self.new
 				# Google Cloud Messaging 
-				client.gcm = GCM.new("AIzaSyBLZSS5D3k07As3GS2HXKc8aMqV8xh5KSQ")
-
+				homage_client.gcm = GCM.new("AIzaSyBLZSS5D3k07As3GS2HXKc8aMqV8xh5KSQ")
 				# Apple Push Notification
-				client.apn = Houston::Client.development
-				client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_dev.pem", __FILE__))
-
+				homage_client.apn = Houston::Client.development
+				homage_client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_dev.pem", __FILE__))
 				# Apple Push Notification - For new client (version 1.5.0 and up)
-				client.apn_new = Houston::Client.production
-				client.apn_new.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod_150.pem", __FILE__))
-				client.apn_new.passphrase = "homage"
+				homage_client.apn_new = Houston::Client.production
+				homage_client.apn_new.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod_150.pem", __FILE__))
+				homage_client.apn_new.passphrase = "homage"
 
-				client
+				# Monkey Push Client
+				monkey_client = self.new
+				# Google Cloud Messaging - No Android Support...
+				# Apple Push Notification
+				monkey_client.apn = Houston::Client.development
+				monkey_client.apn.certificate = File.read(File.expand_path("../../../certificates/monkey_push_notification_dev.pem", __FILE__))
+
+				return Hash["544ead1e454c610d1600000f" => homage_client, "54919516454c61f4080000e5" => monkey_client]
 			end
 
 			def production
-				client = self.new
+				homage_client = self.new
 
 				# Google Cloud Messaging 
-				client.gcm = GCM.new("AIzaSyBLZSS5D3k07As3GS2HXKc8aMqV8xh5KSQ")
+				homage_client.gcm = GCM.new("AIzaSyBLZSS5D3k07As3GS2HXKc8aMqV8xh5KSQ")
 
 				# Apple Push Notification
-				client.apn = Houston::Client.production
-				client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod.pem", __FILE__))
-				client.apn.passphrase = "homage"
+				homage_client.apn = Houston::Client.production
+				homage_client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod.pem", __FILE__))
+				homage_client.apn.passphrase = "homage"
 
 				# Apple Push Notification - For new client (version 1.5.0 and up)
-				client.apn_new = Houston::Client.production
-				client.apn_new.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod_150.pem", __FILE__))
-				client.apn_new.passphrase = "homage"
+				homage_client.apn_new = Houston::Client.production
+				homage_client.apn_new.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod_150.pem", __FILE__))
+				homage_client.apn_new.passphrase = "homage"
 
-				client
+				# Monkey Push Client
+				monkey_client = self.new
+				# Google Cloud Messaging - No Android Support...
+				# Apple Push Notification
+				monkey_client.apn = Houston::Client.production
+				monkey_client.apn.certificate = File.read(File.expand_path("../../../certificates/monkey_push_notification_prod.pem", __FILE__))
+				monkey_client.apn_new.passphrase = "homage"
+
+				return Hash["544ead1e454c610d1600000f" => homage_client, "54919516454c61f4080000e5" => monkey_client]
 			end
 	    end
 
