@@ -32,7 +32,7 @@ Dir.foreach(folder) do |file|
 
 		video_path = folder + file
 		video_metadata = MiniExiftool.new(video_path)
-		frame_rate = video_metadata.VideoFrameRate.round.to_s
+		frame_rate = video_metadata.VideoFrameRate.to_s
 
 		# Creating images from the video
 		images_fodler = folder + "Images/"
