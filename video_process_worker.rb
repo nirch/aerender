@@ -14,7 +14,7 @@ configure do
 	set :process_footage_uri, URI.parse(process_footage_url)
 
 	AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
-	AVUtils.algo_binary = 'C:/Development/Algo/v-15-02-19/UniformMattingCA.exe'
+	AVUtils.algo_binary = 'C:/Development/Algo/v-14-12-17/UniformMattingCA.exe'
 	AVUtils.algo_params = 'C:/Development/Algo/params.xml'
 
 	# Using Amazon's SES for mail delivery
