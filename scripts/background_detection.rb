@@ -1,7 +1,7 @@
 require 'fileutils'
 require 'mini_exiftool'
 
-folder = 'C:/Users/homage/Documents/Data/Backgroud/Prod'
+folder = 'C:/Users/homage/Documents/Data/Backgroud/Square'
 background_ca_path = 'C:\Development\Homage\Background\Binary\UnBackgroundCA.exe'
 params_path = 'C:\Development\Algo\params.xml'
 
@@ -28,13 +28,17 @@ Dir.glob(folder_jpg) do |file|
 	end
 
 	background_command = background_ca_path + ' -P' + params_path + ' ' + contour_path + ' ' + flip_switch + ' ' + thumbnail_path + ' ' + junk_path
-
+	puts background_command
 	# Running the command
 	output = IO.popen(background_command).readlines
-	#puts output
-	background_state = output[output.length-1].split(': ')[1].chomp
-	puts background_state
 
-	output_path = File.join output_folder, File.basename(thumbnail_path, ".jpg") + '-' +background_state + ".jpg"
-	FileUtils.copy thumbnail_path, output_path
+	if output.length == 0 then
+		puts "Error processing background for " + file
+	else
+		background_state = output[output.length-1].split(': ')[1].chomp
+		puts background_state
+
+		output_path = File.join output_folder, File.basename(thumbnail_path, ".jpg") + '-' +background_state + ".jpg"
+		FileUtils.copy thumbnail_path, output_path
+	end
 end

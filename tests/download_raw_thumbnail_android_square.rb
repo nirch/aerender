@@ -8,12 +8,12 @@ TEST_DB = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq
 PROD_DB = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod").db()
 
 db = PROD_DB
-#s3 = HomageAWS::HomageS3.production
+s3 = HomageAWS::HomageS3.production
 
 remakes_collection = db.collection("Remakes")
 stories_collection = db.collection("Stories")
 users_collection = db.collection("Users")
-download_folder = "/Users/nirchannes/Documents/TestData/Square"#'C:\Development\Homage\Background\Try'#
+download_folder = "C:/Users/homage/Documents/Data/Backgroud/Square"
 
 android_users_array = Array.new
 android_users = users_collection.find({devices: {"$elemMatch" => {device_id: {"$exists" => true}}}})
@@ -70,8 +70,9 @@ for remake in remakes do
 		open(contour_download_path, 'wb') do |file|
 			file << open(contour_face_url).read
 		end
-	rescue
+	rescue => error
 		puts 'error in downloading remake ' + remake_id
+		puts error
 	end
 end
 
