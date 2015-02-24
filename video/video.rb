@@ -142,6 +142,7 @@ module AVUtils
 				for line in commandlineresult
 					if  line.include? "Background: "
 						background_value = line.split(": ")[1].gsub("\n",'')
+						break
 					end
 				end
 			else

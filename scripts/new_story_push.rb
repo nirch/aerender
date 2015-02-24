@@ -12,21 +12,26 @@ users_collection = db.collection("Users")
 stories_collection = db.collection("Stories")
 
 # Push client
-push_client = HomagePush::Client.development
+push_client = HomagePush::Client.production
 
 # New Story
-message = "Create your own Holiday clip! Merry Christmas!!"
-story_id = BSON::ObjectId.from_string("5492fe00454c61672c000489")
+message = "Do the Maccabi TLV Dance! Win a Trip to Europe!"
+story_id = BSON::ObjectId.from_string("54e896266461747f303f0000")
 story = stories_collection.find_one(story_id)
 
 # Getting all the users
 date_input = "20140430Z"
 from_date = Time.parse(date_input)
-users = users_collection.find(created_at:{"$gte"=>from_date})
+homage_campaign = BSON::ObjectId.from_string("544ead1e454c610d1600000f")
+users = users_collection.find(created_at:{"$gte"=>from_date}, campaign_id:homage_campaign)
 
 for user in users do
 	# Push notification for video ready
-	HomagePush.push_new_story(story, message, user, push_client)
+	begin
+		HomagePush.push_new_story(story, message, user, push_client["544ead1e454c610d1600000f"])
+	rescue => error
+		puts error
+	end
 end
 
 # # Test on Nir's user
