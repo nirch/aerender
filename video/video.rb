@@ -140,7 +140,7 @@ module AVUtils
 					commandlineresult = output.readlines
 				end
 				for line in commandlineresult
-					if  line.include? "background: "
+					if  line.include? "Background: "
 						background_value = line.split(": ")[1].gsub("\n",'')
 					end
 				end
