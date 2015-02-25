@@ -21,7 +21,8 @@ module HomagePush
 
 				# Monkey Push Client
 				monkey_client = self.new
-				# Google Cloud Messaging - No Android Support...
+				# Google Cloud Messaging
+				monkey_client.gcm = GCM.new("AIzaSyCzVRX3TmfgJt8gCdi17UjfH6Vf62ZiEt8")
 				# Apple Push Notification
 				monkey_client.apn = Houston::Client.production
 				monkey_client.apn.certificate = File.read(File.expand_path("../../../certificates/monkey_push_notification_prod.pem", __FILE__))
@@ -48,7 +49,8 @@ module HomagePush
 
 				# Monkey Push Client
 				monkey_client = self.new
-				# Google Cloud Messaging - No Android Support...
+				# Google Cloud Messaging
+				monkey_client.gcm = GCM.new("AIzaSyCzVRX3TmfgJt8gCdi17UjfH6Vf62ZiEt8")
 				# Apple Push Notification
 				monkey_client.apn = Houston::Client.production
 				monkey_client.apn.certificate = File.read(File.expand_path("../../../certificates/monkey_push_notification_prod.pem", __FILE__))
