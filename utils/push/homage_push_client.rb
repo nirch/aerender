@@ -66,7 +66,7 @@ module HomagePush
 			notification.alert = message
 			notification.custom_data = data
 			notification.sound = "default"
-			@apn.push(notification)	
+			#@apn.push(notification)	
 			@apn_new.push(notification) if @apn_new
 	    end
 
