@@ -56,6 +56,7 @@ configure :development do
 
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
+	set :db_connection, db_connection
 	set :db, db_connection.db()
 
 	# AWS S3
@@ -86,6 +87,7 @@ configure :test do
 
     # Test DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
+	set :db_connection, db_connection
 	set :db, db_connection.db()
 
 	# AWS S3
@@ -124,6 +126,7 @@ configure :production do
 
     # DB connection
 	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
+	set :db_connection, db_connection
 	set :db, db_connection.db()
 
 	# AWS S3
@@ -206,7 +209,10 @@ post '/render' do
 		environment = settings.environment.to_s
 
 		# reconnecting to db is connection is down
-		settings.db.connect if !settings.db.connected?
+		if !settings.db_connection.connected?
+			logger.info "reconnecting to mongo"
+			settings.db_connection.connect
+		end
 
 		# input
 		remake_id = BSON::ObjectId.from_string(params[:remake_id])
