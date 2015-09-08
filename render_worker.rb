@@ -11,9 +11,9 @@ configure do
 	set :server, 'webrick'
 
 	# Setting folders
-	set :ae_projects_folder, "C:/Users/Administrator/Documents/AE Projects/"
-	set :output_folder, "Z:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
-	set :cdn_folder, "Z:/CDN/"
+	set :ae_projects_folder, "C:/Users/homage/Documents/AE Projects/"
+	set :output_folder, "D:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
+	set :cdn_folder, "D:/CDN/"
 
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
@@ -203,6 +203,11 @@ end
 
 post '/render' do
 	begin
+		environment = settings.environment.to_s
+
+		# reconnecting to db is connection is down
+		settings.db.connect if !settings.db.connected?
+
 		# input
 		remake_id = BSON::ObjectId.from_string(params[:remake_id])
 		remakes = settings.db.collection("Remakes")
@@ -216,7 +221,6 @@ post '/render' do
 		story = settings.db.collection("Stories").find_one(remake["story_id"])
 		user = settings.db.collection("Users").find_one(remake["user_id"])
 		campaign_id = story["campaign_id"].to_s
-		environment = settings.environment.to_s
 
 		# Getting the AE project details
 		story_folder = story["after_effects"][remake["resolution"]]["folder"]

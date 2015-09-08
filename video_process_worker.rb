@@ -70,8 +70,8 @@ configure :test do
 	disable :raise_errors, :show_exceptions
 
 	# Setting folders
-	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
-	set :contour_folder, "C:/Users/Administrator/Documents/Contours/"
+	set :remakes_folder, "D:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
+	set :contour_folder, "C:/Users/homage/Documents/Contours/"
 
 	# Queues
     set :process_footage_queue, HomageAWS::HomageSQS.test.cv_queue
@@ -104,8 +104,8 @@ configure :production do
 	disable :raise_errors, :show_exceptions
 
 	# Setting folders
-	set :remakes_folder, "Z:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
-	set :contour_folder, "C:/Users/Administrator/Documents/Contours/"
+	set :remakes_folder, "D:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
+	set :contour_folder, "C:/Users/homage/Documents/Contours/"
 
 	# Queues
     set :process_footage_queue, HomageAWS::HomageSQS.production.cv_queue
@@ -236,6 +236,8 @@ end
 
 post '/process' do
 	begin
+		environment = settings.environment.to_s
+
 		#remake_id, scene_id, take_id = handle_upload_notification
 		# Supporting old POST/PUT from client
 		remake_id = BSON::ObjectId.from_string(params[:remake_id])
@@ -252,7 +254,6 @@ post '/process' do
 		story = settings.db.collection("Stories").find_one(remake["story_id"])
 		user = settings.db.collection("Users").find_one(remake["user_id"])
 		campaign_id = story["campaign_id"].to_s
-		environment = settings.environment.to_s
 
 		# Creating a new directory for the processing
 		process_folder = settings.remakes_folder + take_id + "/"
