@@ -51,8 +51,7 @@ configure :development do
     set :render_queue, HomageAWS::HomageSQS.test.render_queue
 
     # Test DB connection
-	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
-	set :db, db_connection.db()
+    set :db_client, Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12')
 
 	# AWS S3
 	set :s3, HomageAWS::HomageS3.test
@@ -78,8 +77,7 @@ configure :test do
     set :render_queue, HomageAWS::HomageSQS.test.render_queue
 
     # Test DB connection
-	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
-	set :db, db_connection.db()
+    set :db_client, Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12')
 
 	# AWS S3
 	set :s3, HomageAWS::HomageS3.test
@@ -112,8 +110,7 @@ configure :production do
     set :render_queue, HomageAWS::HomageSQS.production.render_queue
 
     # DB connection
-	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
-	set :db, db_connection.db()
+    set :db_client, Mongo::Client.new(['troup.mongohq.com:10057'], :database => 'Homage_Prod', :user => 'Homage', :password => 'homageIt12')
 
 	# AWS S3
 	set :s3, HomageAWS::HomageS3.production
@@ -201,38 +198,38 @@ for i in 1..PARALLEL_PROCESS_NUM do
 	end
 end
 
-def handle_upload_notification
-	remake_id = nil
-	scene_id = nil
-	take_id = nil
+# def handle_upload_notification
+# 	remake_id = nil
+# 	scene_id = nil
+# 	take_id = nil
 
-	if params[:Records]
-		# Direct notification from S3 on upload. Verifing that this a raw object
-		# "Remakes/54a59def771ac166c5000001/raw_scene_2.mov"
-		upload_object_key = params[:Records][0][:object][:key]
-		logger.info "New S3 upload with key: " + upload_object_key
+# 	if params[:Records]
+# 		# Direct notification from S3 on upload. Verifing that this a raw object
+# 		# "Remakes/54a59def771ac166c5000001/raw_scene_2.mov"
+# 		upload_object_key = params[:Records][0][:object][:key]
+# 		logger.info "New S3 upload with key: " + upload_object_key
 
-		upload_object = settings.s3.get_object(upload_object_key)
-		take_id = upload_object.metadata['take_id']
-		if take_id
-			remake_id = take_id.split('_')[0]
-			scene_id = take_id.split('_')[1].to_i
-		else
-			logger.info "S3 upload is not a raw scene. key: " + upload_object_key
-		end
-	elsif params[:remake_id] && params[:scene_id] && params[:take_id]
-		# Supporting old POST/PUT from client
-		remake_id = BSON::ObjectId.from_string(params[:remake_id])
-		scene_id = params[:scene_id].to_i
-		take_id = params[:take_id]
+# 		upload_object = settings.s3.get_object(upload_object_key)
+# 		take_id = upload_object.metadata['take_id']
+# 		if take_id
+# 			remake_id = take_id.split('_')[0]
+# 			scene_id = take_id.split('_')[1].to_i
+# 		else
+# 			logger.info "S3 upload is not a raw scene. key: " + upload_object_key
+# 		end
+# 	elsif params[:remake_id] && params[:scene_id] && params[:take_id]
+# 		# Supporting old POST/PUT from client
+# 		remake_id = BSON::ObjectId.from_string(params[:remake_id])
+# 		scene_id = params[:scene_id].to_i
+# 		take_id = params[:take_id]
 
-		logger.info "Old Process footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s + " with take_id " + take_id
-	else
-		logger.error "Invalid params for processing video. params: " + params.to_s
-	end
+# 		logger.info "Old Process footage for scene " + scene_id.to_s + " for remake " + remake_id.to_s + " with take_id " + take_id
+# 	else
+# 		logger.error "Invalid params for processing video. params: " + params.to_s
+# 	end
 
-	return remake_id, scene_id, take_id
-end
+# 	return remake_id, scene_id, take_id
+# end
 
 post '/process' do
 	begin
@@ -249,10 +246,10 @@ post '/process' do
 		return 200 unless remake_id
 
 		# Fetching the remake and its story
-		remakes = settings.db.collection("Remakes")
-		remake = remakes.find_one(remake_id)
-		story = settings.db.collection("Stories").find_one(remake["story_id"])
-		user = settings.db.collection("Users").find_one(remake["user_id"])
+		remakes = settings.db_client[:Remakes]
+		remake = remakes.find({_id:remake_id}).each.next
+		story = settings.db_client[:Stories].find({_id:remake["story_id"]}).each.next
+		user = settings.db_client[:Users].find({_id:remake["user_id"]}).each.next
 		campaign_id = story["campaign_id"].to_s
 
 		# Creating a new directory for the processing
@@ -269,7 +266,7 @@ post '/process' do
 		FileUtils.mkdir process_folder
 
 		# Updating the status of this footage to Processing
-		result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
+		result = remakes.update_one({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Processing}})
 		logger.info "Footage status updated to Processing (2) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 
 		# Downloading the raw video from s3
@@ -296,10 +293,10 @@ post '/process' do
 				##---------------------------------------------
 				if s3_upload_thumbnail_object != nil && processed_video != nil
 					if background_value != nil
-						remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.background" => background_value}})
+						remakes.update_one({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.background" => background_value}})
 					end
 					if s3_upload_thumbnail_object.public_url != nil
-						remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.raw_thumbnail" => s3_upload_thumbnail_object.public_url.to_s}})
+						remakes.update_one({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.raw_thumbnail" => s3_upload_thumbnail_object.public_url.to_s}})
 					end
 				end
 			else
@@ -325,7 +322,7 @@ post '/process' do
 			processed_video_s3_key = remake["footages"][scene_id - 1]["processed_video_s3_key"]
 			settings.s3.upload processed_video.path, processed_video_s3_key, :private
 
-			result = remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
+			result = remakes.update_one({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::Ready}})
 			logger.info "Footage status updated to Ready (3) for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 		else
 			logger.info "not updating the DB to status ready since this is not the latest take for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
@@ -336,7 +333,7 @@ post '/process' do
 			message = {remake_id: remake_id.to_s}
 			settings.render_queue.send_message(message.to_json)
 
-			remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::PendingQueue}})
+			remakes.update_one({_id: remake_id}, {"$set" => {status: RemakeStatus::PendingQueue}})
 		end
 
 		# Deleting the folder after everything was updated successfully
@@ -350,8 +347,8 @@ post '/process' do
 		logger.error error.backtrace.join("\n")
 
 		# update DB that remake ans footage process failed
-		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
-		remakes.update({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::ProcessFailed}})
+		remakes.update_one({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
+		remakes.update_one({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::ProcessFailed}})
 		# clear visibility timout (ChangeMessageVisibility)
 		#AWS::SQS::Client.change_message_visibility({:queue_url => settings.render_queue_url, :receipt_handle => handle, :visibility_timeout => 0})
 
@@ -413,7 +410,7 @@ end
 	# 1. User clicked on "Create Movie" (status of remake is pending for scenes to complete)
 	# 2. All scenes are processed
 def remake_ready?(remake_id)
-	remake = settings.db.collection("Remakes").find_one(remake_id)
+	remake = settings.db_client["Remakes"].find({_id:remake_id}).each.next
 
 	logger.info "Checking if remake " + remake_id.to_s + " is ready for render"
 	if remake["status"] == RemakeStatus::PendingScenes then

@@ -55,9 +55,7 @@ configure :development do
     set :render_queue, AWS::SQS.new.queues[settings.render_queue_url]
 
     # Test DB connection
-	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
-	set :db_connection, db_connection
-	set :db, db_connection.db()
+    set :db_client, Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12')
 
 	# AWS S3
 	s3 = AWS::S3.new
@@ -86,9 +84,7 @@ configure :test do
     set :render_queue, AWS::SQS.new.queues[settings.render_queue_url]
 
     # Test DB connection
-	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage")
-	set :db_connection, db_connection
-	set :db, db_connection.db()
+    set :db_client, Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12')
 
 	# AWS S3
 	s3 = AWS::S3.new
@@ -125,9 +121,7 @@ configure :production do
     set :render_queue, AWS::SQS.new.queues[settings.render_queue_url]
 
     # DB connection
-	db_connection = Mongo::MongoClient.from_uri("mongodb://Homage:homageIt12@troup.mongohq.com:10057/Homage_Prod")
-	set :db_connection, db_connection
-	set :db, db_connection.db()
+    set :db_client, Mongo::Client.new(['troup.mongohq.com:10057'], :database => 'Homage_Prod', :user => 'Homage', :password => 'homageIt12')
 
 	# AWS S3
 	s3 = AWS::S3.new
@@ -208,24 +202,18 @@ post '/render' do
 	begin
 		environment = settings.environment.to_s
 
-		# reconnecting to db is connection is down
-		if !settings.db_connection.connected?
-			logger.info "reconnecting to mongo"
-			settings.db_connection.connect
-		end
-
 		# input
 		remake_id = BSON::ObjectId.from_string(params[:remake_id])
-		remakes = settings.db.collection("Remakes")
+		remakes = settings.db_client[:Remakes]
 
 		# Logging and updating the DB that the rendering has started
 		logger.info "Starting the rendering of remake " + remake_id.to_s
-		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Rendering}})
+		remakes.update_one({_id: remake_id}, {"$set" => {status: RemakeStatus::Rendering}})
 
 		# Getting the remake and story to render
-		remake = remakes.find_one(remake_id)
-		story = settings.db.collection("Stories").find_one(remake["story_id"])
-		user = settings.db.collection("Users").find_one(remake["user_id"])
+		remake = remakes.find({_id:remake_id}).each.next
+		story = settings.db_client[:Stories].find({_id:remake["story_id"]}).each.next
+		user = settings.db_client[:Users].find({_id:remake["user_id"]}).each.next
 		campaign_id = story["campaign_id"].to_s
 
 		# Getting the AE project details
@@ -263,7 +251,7 @@ post '/render' do
 		if remake["render_start"] then
 			render_duration = render_end - remake["render_start"]
 		end
-		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration, grade:-1}})
+		remakes.update_one({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration, grade:-1}})
 		logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
 		# Push notification for video ready
@@ -283,10 +271,6 @@ post '/render' do
 		logger.error error.to_s
 		logger.error error.backtrace.join("\n")
 
-		# update DB that remake failed + clear visibility timout (ChangeMessageVisibility)
-		remakes.update({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
-		#AWS::SQS::Client.change_message_visibility({:queue_url => settings.render_queue_url, :receipt_handle => handle, :visibility_timeout => 0})
-
 	    # Sending a mail about the error
 	    Mail.deliver do
 		  from    'render-worker-' + environment + '@homage.it'
@@ -294,6 +278,10 @@ post '/render' do
 		  subject 'Error while rendering remake ' + remake_id.to_s
 		  body    error.to_s + "\n" + error.backtrace.join("\n")
 		end
+
+		# update DB that remake failed + clear visibility timout (ChangeMessageVisibility)
+		remakes.update_one({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
+		#AWS::SQS::Client.change_message_visibility({:queue_url => settings.render_queue_url, :receipt_handle => handle, :visibility_timeout => 0})
 
 		# Push notification error
 		HomagePush.push_video_timeout(remake, user, settings.push_client[campaign_id])
@@ -303,13 +291,13 @@ post '/render' do
 end
 
 def update_story_remakes_count(story_id)
-	remakes = settings.db.collection("Remakes")
-	stories = settings.db.collection("Stories")
+	remakes = settings.db_client[:Remakes]
+	stories = settings.db_client[:Stories]
 
 	# Getting the number of remakes for this story
-	story_remakes = remakes.count({query: {story_id: story_id, share_link: {"$exists" => true}}})
+	story_remakes = remakes.count({story_id: story_id, share_link: {"$exists" => true}})
 
-	stories.update({_id: story_id}, {"$set" => {"remakes_num" => story_remakes}})
+	stories.update_one({_id: story_id}, {"$set" => {"remakes_num" => story_remakes}})
 	logger.info "Updated story id <" + story_id.to_s + "> number of remakes to " + story_remakes.to_s
 end
 
