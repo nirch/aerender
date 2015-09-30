@@ -10,10 +10,13 @@ configure do
 	# Global configuration (regardless of the environment)
 	set :server, 'webrick'
 
+	drive = ENV['drive'] ? ENV['drive'] : "Z:"
+	user = ENV['user'] ? ENV['user'] : "Administrator"
+
 	# Setting folders
-	set :ae_projects_folder, "C:/Users/homage/Documents/AE Projects/"
-	set :output_folder, "D:/Output/" # "C:/Users/Administrator/Documents/AE Output/"
-	set :cdn_folder, "D:/CDN/"
+	set :ae_projects_folder, "C:/Users/" + user + "/Documents/AE Projects/"
+	set :output_folder, drive + "/Output/" # "C:/Users/Administrator/Documents/AE Output/"
+	set :cdn_folder, drive + "/CDN/"
 
 	# AWS Connection
 	aws_config = {access_key_id: "AKIAJTPGKC25LGKJUCTA", secret_access_key: "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"}
@@ -78,7 +81,6 @@ configure :test do
 	set :s3_bucket_path, "https://homagetest.s3.amazonaws.com/"
 	set :cdn_path, "http://d2m9jhdu5nhw9c.cloudfront.net/"
 
-
 	# Process Footage Queue
 	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueueTest"
     set :render_queue, AWS::SQS.new.queues[settings.render_queue_url]
@@ -114,7 +116,6 @@ configure :production do
 	# Setting folders
 	set :s3_bucket_path, "https://homageapp.s3.amazonaws.com/"
 	set :cdn_path, "http://d293iqusjtyr94.cloudfront.net/"
-
 
 	# Process Footage Queue
 	set :render_queue_url, "https://sqs.us-east-1.amazonaws.com/509268258673/RenderQueue"
@@ -336,3 +337,7 @@ def upload_to_s3 (file_path, s3_key, acl, content_type=nil)
 	return s3_object
 end
 
+
+get '/test/env' do
+	settings.ae_projects_folder + " ----- " + settings.output_folder + " -------- " + settings.cdn_folder
+end

@@ -68,9 +68,13 @@ configure :test do
 	enable :dump_errors 
 	disable :raise_errors, :show_exceptions
 
+
+	drive = ENV['drive'] ? ENV['drive'] : "Z:"
+	user = ENV['user'] ? ENV['user'] : "Administrator"
+
 	# Setting folders
-	set :remakes_folder, "D:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
-	set :contour_folder, "C:/Users/homage/Documents/Contours/"
+	set :remakes_folder, drive + "/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
+	set :contour_folder, "C:/Users/" + user + "/Documents/Contours/"
 
 	# Queues
     set :process_footage_queue, HomageAWS::HomageSQS.test.cv_queue
@@ -101,9 +105,12 @@ configure :production do
 	enable :dump_errors
 	disable :raise_errors, :show_exceptions
 
+	drive = ENV['drive'] ? ENV['drive'] : "Z:"
+	user = ENV['user'] ? ENV['user'] : "Administrator"
+
 	# Setting folders
-	set :remakes_folder, "D:/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
-	set :contour_folder, "C:/Users/homage/Documents/Contours/"
+	set :remakes_folder, drive + "/Remakes/" # "C:/Users/Administrator/Documents/Remakes/"
+	set :contour_folder, "C:/Users/" + user + "/Documents/Contours/"
 
 	# Queues
     set :process_footage_queue, HomageAWS::HomageSQS.production.cv_queue
@@ -374,9 +381,6 @@ post '/process' do
 		end
 
 	end
-end
-
-get '/health/check' do
 end
 
 def get_contour_path(remake, story, scene_id)
