@@ -198,6 +198,25 @@ for i in 1..PARALLEL_PROCESS_NUM do
 	end
 end
 
+# Keep-Alive thread for Mongo connection (Azure Hack)
+Thread.new do
+	while true do
+		begin
+
+			tests = settings.db_client[:Tests]
+			dummy_id = BSON::ObjectId.from_string('52ee613cab557ec484000222') # Dummy ID
+			result = tests.find({_id:dummy_id})
+			result.count
+
+			sleep 30
+
+		rescue => error
+			puts "rescued, error occured, keeping the keep-alive thread alive. Error: " + error.to_s
+			puts  error.backtrace.join("\n")
+		end
+	end
+end
+
 
 post '/render' do
 	begin
@@ -336,7 +355,6 @@ def upload_to_s3 (file_path, s3_key, acl, content_type=nil)
 
 	return s3_object
 end
-
 
 get '/test/env' do
 	settings.ae_projects_folder + " ----- " + settings.output_folder + " -------- " + settings.cdn_folder

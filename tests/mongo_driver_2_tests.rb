@@ -34,6 +34,13 @@ class TestNewMongoDriver < MiniTest::Test
 		assert story_name == "The Oscars"
 	end
 
+	def test_find_nothing
+		tests = @client[:Tests]
+		dummy_id = BSON::ObjectId.from_string('52ee613cab557ec484000222') # Dummy ID
+		result = tests.find({_id:dummy_id})
+		assert result.count == 0
+	end
+
 	def test_count
 		stories = @client[:Stories]
 		count = stories.count({level:0})
@@ -52,10 +59,6 @@ class TestNewMongoDriver < MiniTest::Test
 		remake_id = BSON::ObjectId.from_string('53da334cb8fef16ba100000b') # Test remake
 		result = remakes.update_one({_id: remake_id, "footages.scene_id" => 2}, {"$set" => {"footages.$.status" => 999}})
 		assert result.n == 1
-	end
-
-	def test_options
-		puts @client.inspect
 	end
 
   	def teardown
