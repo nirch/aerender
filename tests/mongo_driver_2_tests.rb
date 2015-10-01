@@ -7,7 +7,7 @@ class TestNewMongoDriver < MiniTest::Test
  
 	def setup
 		Mongo::Logger.logger.level = Logger::WARN
-		@client = Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12')
+		@client = Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12', :connect => :direct)
 		#@client = Mongo::Client.new(['mongodb://Homage:homageIt12@paulo.mongohq.com:10008/Homage'])
 	end
 
@@ -52,6 +52,10 @@ class TestNewMongoDriver < MiniTest::Test
 		remake_id = BSON::ObjectId.from_string('53da334cb8fef16ba100000b') # Test remake
 		result = remakes.update_one({_id: remake_id, "footages.scene_id" => 2}, {"$set" => {"footages.$.status" => 999}})
 		assert result.n == 1
+	end
+
+	def test_options
+		puts @client.inspect
 	end
 
   	def teardown

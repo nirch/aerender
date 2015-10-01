@@ -51,7 +51,7 @@ configure :development do
     set :render_queue, HomageAWS::HomageSQS.test.render_queue
 
     # Test DB connection
-    set :db_client, Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12')
+    set :db_client, Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12', :connect => :direct)
 
 	# AWS S3
 	set :s3, HomageAWS::HomageS3.test
@@ -81,7 +81,7 @@ configure :test do
     set :render_queue, HomageAWS::HomageSQS.test.render_queue
 
     # Test DB connection
-    set :db_client, Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12')
+    set :db_client, Mongo::Client.new(['paulo.mongohq.com:10008'], :database => 'Homage', :user => 'Homage', :password => 'homageIt12', :connect => :direct)
 
 	# AWS S3
 	set :s3, HomageAWS::HomageS3.test
@@ -117,7 +117,7 @@ configure :production do
     set :render_queue, HomageAWS::HomageSQS.production.render_queue
 
     # DB connection
-    set :db_client, Mongo::Client.new(['troup.mongohq.com:10057'], :database => 'Homage_Prod', :user => 'Homage', :password => 'homageIt12')
+    set :db_client, Mongo::Client.new(['troup.mongohq.com:10057'], :database => 'Homage_Prod', :user => 'Homage', :password => 'homageIt12', :connect => :direct)
 
 	# AWS S3
 	set :s3, HomageAWS::HomageS3.production
