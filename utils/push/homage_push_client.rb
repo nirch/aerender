@@ -26,7 +26,10 @@ module HomagePush
 				monkey_client.apn.certificate = File.read(File.expand_path("../../../certificates/monkey_push_notification_prod.pem", __FILE__))
 				monkey_client.apn.passphrase = "homage"
 
-				return Hash["544ead1e454c610d1600000f" => homage_client, "54919516454c61f4080000e5" => monkey_client]
+				return Hash["544ead1e454c610d1600000f" => homage_client, 
+							"54919516454c61f4080000e5" => monkey_client, 
+							"55e4a5a813ac494fce6d203b" => homage_client # Recast
+						]
 			end
 
 			def production
@@ -49,7 +52,10 @@ module HomagePush
 				monkey_client.apn.certificate = File.read(File.expand_path("../../../certificates/monkey_push_notification_prod.pem", __FILE__))
 				monkey_client.apn.passphrase = "homage"
 
-				return Hash["544ead1e454c610d1600000f" => homage_client, "54919516454c61f4080000e5" => monkey_client]
+				return Hash["544ead1e454c610d1600000f" => homage_client, 
+							"54919516454c61f4080000e5" => monkey_client, 
+							"55e4a5a813ac494fce6d203b" => homage_client # Recast
+						]
 			end
 	    end
 
