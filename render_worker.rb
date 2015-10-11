@@ -28,6 +28,8 @@ configure do
 	AVUtils.ffmpeg_binary = 'C:/Development/FFmpeg/bin/ffmpeg.exe'
 	AVUtils.aerender_binary = 'C:/Program Files/Adobe/Adobe After Effects CC/Support Files/aerender.exe'
 
+	OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:ssl_version] = "TLSv1" if OpenSSL::SSL::SSLContext::METHODS.include? :TLSv1
+
 	# Using Amazon's SES for mail delivery
 	Mail.defaults do
   		delivery_method :smtp, { 
@@ -359,3 +361,8 @@ end
 get '/test/env' do
 	settings.ae_projects_folder + " ----- " + settings.output_folder + " -------- " + settings.cdn_folder
 end
+
+get '/test/openssl' do
+	OpenSSL::SSL::SSLContext::DEFAULT_PARAMS.to_s
+end
+
