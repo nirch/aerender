@@ -14,8 +14,8 @@ module HomagePush
 				# Apple Push Notification
 				homage_client.apn = Houston::Client.development
 				#homage_client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_dev.pem", __FILE__))
-				homage_client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod_150.pem", __FILE__))
-				homage_client.apn.passphrase = "homage"
+				homage_client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod.pem", __FILE__))
+				#homage_client.apn.passphrase = "homage"
 
 				# Monkey Push Client
 				monkey_client = self.new
@@ -40,8 +40,8 @@ module HomagePush
 
 				# Apple Push Notification
 				homage_client.apn = Houston::Client.production
-				homage_client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod_150.pem", __FILE__))
-				homage_client.apn.passphrase = "homage"
+				homage_client.apn.certificate = File.read(File.expand_path("../../../certificates/homage_push_notification_prod.pem", __FILE__))
+				#homage_client.apn.passphrase = "homageit10"
 
 				# Monkey Push Client
 				monkey_client = self.new
