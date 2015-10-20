@@ -28,7 +28,7 @@ module HomagePush
 
 
 				# World of Coca-Cola Client
-				monkey_client = self.new
+				wocc_client = self.new
 				# Google Cloud Messaging
 				#monkey_client.gcm = GCM.new("AIzaSyCzVRX3TmfgJt8gCdi17UjfH6Vf62ZiEt8")
 				# Apple Push Notification
@@ -63,7 +63,7 @@ module HomagePush
 				monkey_client.apn.passphrase = "homage"
 
 				# World of Coca-Cola Client
-				monkey_client = self.new
+				wocc_client = self.new
 				# Google Cloud Messaging
 				#monkey_client.gcm = GCM.new("AIzaSyCzVRX3TmfgJt8gCdi17UjfH6Vf62ZiEt8")
 				# Apple Push Notification
