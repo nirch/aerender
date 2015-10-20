@@ -26,9 +26,19 @@ module HomagePush
 				monkey_client.apn.certificate = File.read(File.expand_path("../../../certificates/monkey_push_notification_prod.pem", __FILE__))
 				monkey_client.apn.passphrase = "homage"
 
+
+				# World of Coca-Cola Client
+				monkey_client = self.new
+				# Google Cloud Messaging
+				#monkey_client.gcm = GCM.new("AIzaSyCzVRX3TmfgJt8gCdi17UjfH6Vf62ZiEt8")
+				# Apple Push Notification
+				wocc_client.apn = Houston::Client.production
+				wocc_client.apn.certificate = File.read(File.expand_path("../../../certificates/woc_prod_apn.pem", __FILE__))
+
 				return Hash["544ead1e454c610d1600000f" => homage_client, 
 							"54919516454c61f4080000e5" => monkey_client, 
-							"55e4a5a813ac494fce6d203b" => homage_client # Recast
+							"55e4a5a813ac494fce6d203b" => homage_client, # Recast
+							"5624d8e33f6ba13771000002" => wocc_client
 						]
 			end
 
@@ -52,9 +62,18 @@ module HomagePush
 				monkey_client.apn.certificate = File.read(File.expand_path("../../../certificates/monkey_push_notification_prod.pem", __FILE__))
 				monkey_client.apn.passphrase = "homage"
 
+				# World of Coca-Cola Client
+				monkey_client = self.new
+				# Google Cloud Messaging
+				#monkey_client.gcm = GCM.new("AIzaSyCzVRX3TmfgJt8gCdi17UjfH6Vf62ZiEt8")
+				# Apple Push Notification
+				wocc_client.apn = Houston::Client.production
+				wocc_client.apn.certificate = File.read(File.expand_path("../../../certificates/woc_prod_apn.pem", __FILE__))
+
 				return Hash["544ead1e454c610d1600000f" => homage_client, 
 							"54919516454c61f4080000e5" => monkey_client, 
-							"55e4a5a813ac494fce6d203b" => homage_client # Recast
+							"55e4a5a813ac494fce6d203b" => homage_client, # Recast
+							"5624d8e33f6ba13771000002" => wocc_client
 						]
 			end
 	    end
