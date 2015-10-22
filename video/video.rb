@@ -111,11 +111,11 @@ module AVUtils
 			video_to_process = self
 
 			# Resizing/Cropping the video to 360p (640x360) if needed
-			if video_to_process.resolution == "1280x720" then
-				video_to_process = video_to_process.resize(640, 360)
-			elsif video_to_process.resolution == "640x480" then
-				video_to_process = video_to_process.crop(640, 360)
-			end
+			# if video_to_process.resolution == "1280x720" then
+			# 	video_to_process = video_to_process.resize(640, 360)
+			# elsif video_to_process.resolution == "640x480" then
+			# 	video_to_process = video_to_process.crop(640, 360)
+			# end
 
 			# Creating all the frames out of this video (used later by the algo)
 			frame_rate = video_to_process.frame_rate

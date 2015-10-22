@@ -334,13 +334,14 @@ post '/process' do
 			logger.info "foreground extraction not needed for remake <" + remake_id.to_s + ">, footage <" + scene_id.to_s + ">"
 
 			# Resizing/Cropping the video to 360p (640x360) if needed
-			if raw_video.resolution == "1280x720" then
-				processed_video = raw_video.resize(640, 360)
-			elsif video_to_process.resolution == "640x480" then
-				processed_video = raw_video.crop(640, 360)
-			else
-				processed_video = raw_video
-			end
+			# if raw_video.resolution == "1280x720" then
+			# 	processed_video = raw_video.resize(640, 360)
+			# elsif video_to_process.resolution == "640x480" then
+			# 	processed_video = raw_video.crop(640, 360)
+			# else
+			# 	processed_video = raw_video
+			# end
+			processed_video = raw_video
 		end
 
 		# Uploading and updating the status of this footage to Ready only if this is the latest take for the scene (else ignoring it)
@@ -405,7 +406,9 @@ end
 
 def get_contour_path(remake, story, scene_id)
 	# Getting the contour
-	if remake["resolution"] then
+	if story["scenes"][scene_id - 1]["uploaded_resolution"] then
+		contour = story["scenes"][scene_id - 1]["contours"][story["scenes"][scene_id - 1]["uploaded_resolution"]]["contour"]
+	elsif remake["resolution"] then
 		contour = story["scenes"][scene_id - 1]["contours"][remake["resolution"]]["contour"]
 	else
 		contour = story["scenes"][scene_id - 1]["contour"]
