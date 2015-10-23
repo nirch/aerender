@@ -407,7 +407,7 @@ end
 def get_contour_path(remake, story, scene_id)
 	# Getting the contour
 	if story["scenes"][scene_id - 1]["uploaded_resolution"] then
-		contour = story["scenes"][scene_id - 1]["contours"][story["scenes"][scene_id - 1]["uploaded_resolution"]]["contour"]
+		contour = story["scenes"][scene_id - 1]["contours"][story["scenes"][scene_id - 1]["uploaded_resolution"].to_s]["contour"]
 	elsif remake["resolution"] then
 		contour = story["scenes"][scene_id - 1]["contours"][remake["resolution"]]["contour"]
 	else
