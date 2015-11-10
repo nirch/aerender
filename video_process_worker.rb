@@ -374,12 +374,6 @@ post '/process' do
 		logger.error error.to_s
 		logger.error error.backtrace.join("\n")
 
-		# update DB that remake ans footage process failed
-		remakes.update_one({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
-		remakes.update_one({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::ProcessFailed}})
-		# clear visibility timout (ChangeMessageVisibility)
-		#AWS::SQS::Client.change_message_visibility({:queue_url => settings.render_queue_url, :receipt_handle => handle, :visibility_timeout => 0})
-
 	    # Sending a mail about the error
 	    Mail.deliver do
 		  from    'cv-worker-' + environment + '@homage.it'
@@ -387,6 +381,12 @@ post '/process' do
 		  subject 'Error while processing video ' + take_id.to_s
 		  body    error.to_s + "\n" + error.backtrace.join("\n")
 		end
+
+		# update DB that remake ans footage process failed
+		remakes.update_one({_id: remake_id}, {"$set" => {status: RemakeStatus::Failed}})
+		remakes.update_one({_id: remake_id, "footages.scene_id" => scene_id}, {"$set" => {"footages.$.status" => FootageStatus::ProcessFailed}})
+		# clear visibility timout (ChangeMessageVisibility)
+		#AWS::SQS::Client.change_message_visibility({:queue_url => settings.render_queue_url, :receipt_handle => handle, :visibility_timeout => 0})
 
 		# Push notification error
 		HomagePush.push_video_timeout(remake, user, settings.push_client[campaign_id])
