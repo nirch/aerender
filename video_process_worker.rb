@@ -169,6 +169,8 @@ for i in 1..PARALLEL_PROCESS_NUM do
 	Thread.new do
 		while true do
 			begin
+				environment = settings.environment.to_s
+
 				settings.process_footage_queue.poll{ |msg|
 					puts "message caught on ProcessFootageQueue. MessageId: " + msg.id + " MessageBody: " + msg.body
 
@@ -200,6 +202,13 @@ for i in 1..PARALLEL_PROCESS_NUM do
 			rescue => error
 				puts "rescued, error occured, keeping the polling thread alive. Error: " + error.to_s
 				puts  error.backtrace.join("\n")
+
+				Mail.deliver do
+				  from    'cv-worker-' + environment + '@homage.it'
+				  to      'nir@homage.it'
+				  subject 'Error in SQS Thread!'
+				  body     error.to_s + "\n" + error.backtrace.join("\n")
+				end
 			end
 		end
 	end
