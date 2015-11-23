@@ -283,6 +283,12 @@ post '/render' do
 		remakes.update_one({_id: remake_id}, {"$set" => {status: RemakeStatus::Done, video: video_cdn_url, thumbnail: thumbnail_cdn_url, share_link: share_link, render_end: render_end, render_duration: render_duration, grade:-1}})
 		logger.info "Updating DB: remake " + remake_id.to_s + " with status Done and url to video: " + video_cdn_url
 
+		# Updating grade to "0" by default if this remake is "Monkey" remake
+		if story["campaign_id"].to_s == "54919516454c61f4080000e5" then
+			remakes.update_one({_id: remake_id}, {"$set" => { grade:0}})
+			logger.info "Updating grade to 0 default for Monkey remake: " + remake_id.to_s		
+		end
+
 		# Push notification for video ready
 		HomagePush.push_video_ready(story, remake, user, settings.push_client[campaign_id])
 
